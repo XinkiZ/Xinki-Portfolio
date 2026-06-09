@@ -1,0 +1,29 @@
+﻿@keyframes inkSpread {
+  0% { transform: scale(0); opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@keyframes inkDrop {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sealRotate {
+  from { transform: rotate(-5deg); opacity: 0; }
+  to { transform: rotate(0deg); opacity: 1; }
+}
+.ink-spread {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, transparent 70%);
+  animation: inkSpread 2s ease-out;
+}
+.fade-up { animation: fadeUp 0.8s ease-out forwards; }
+.ink-drop { animation: inkDrop 0.6s ease-out forwards; }
+.seal-stamp {
+  display: inline-block; color: var(--ink-seal); font-family: var(--font-serif);
+  border: 2px solid var(--ink-seal); padding: 4px 12px;
+  transform: rotate(-3deg); animation: sealRotate 0.5s ease-out;
+}

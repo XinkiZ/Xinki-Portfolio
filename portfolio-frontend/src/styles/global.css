@@ -1,0 +1,23 @@
+﻿@import "./variables.css";
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  background: var(--ink-bg);
+  color: var(--ink-black);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--ink-black); text-decoration: none; transition: color var(--transition-ink); }
+a:hover { color: var(--ink-seal); }
+img { max-width: 100%; display: block; }
+.container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+.page-section { padding: 80px 0; }
+.section-title {
+  font-family: var(--font-serif); font-size: 36px; text-align: center;
+  margin-bottom: 48px; position: relative;
+}
+.section-title::after {
+  content: ""; display: block; width: 60px; height: 2px;
+  background: var(--ink-seal); margin: 16px auto 0;
+}
