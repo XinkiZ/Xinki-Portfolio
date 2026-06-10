@@ -138,3 +138,17 @@ npm run dev    # http://localhost:5173，/api 自动 proxy 到 8080
 6. 不要提交 `node_modules/`、`target/`、`.idea/`
 7. **OSS Endpoint 必须与 Bucket 所在区域一致**，否则报 AccessDenied
 8. OSS Client 为 Spring 单例 Bean，应用关闭时自动 shutdown
+## Git 提交规范
+
+每次 `git commit` 前，AI 助手必须执行以下操作：
+
+1. **检查变更范围** — 确认本次修改涉及的文件和模块
+2. **同步更新 `README.md`** — 如果变更影响了以下任何内容，必须同步更新 README.md 中对应章节：
+   - 项目功能概览（新增/移除功能）
+   - 目录结构（新增/删除模块或文件）
+   - API 接口（路由变更、入参出参变更）
+   - 启动方式（环境变量、依赖、配置变更）
+   - 易错点 / 踩坑记录（遇到新的环境或配置陷阱）
+3. **Commit message 中注明** — 若本次 README.md 有更新，在 commit message 中标注 `[doc]`
+
+此规范确保后续 AI 能通过 README.md + AGENTS.md 准确识别项目信息。
