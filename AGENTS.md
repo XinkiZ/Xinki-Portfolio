@@ -138,6 +138,63 @@ npm run dev    # http://localhost:5173，/api 自动 proxy 到 8080
 6. 不要提交 `node_modules/`、`target/`、`.idea/`
 7. **OSS Endpoint 必须与 Bucket 所在区域一致**，否则报 AccessDenied
 8. OSS Client 为 Spring 单例 Bean，应用关闭时自动 shutdown
+
+
+## 文件操作规范（写给 AI — 必须遵守）
+
+> 注意：此节是多次踩坑后的血的教训，后续 AI 助手必须逐条遵守。
+
+### 编码铁律
+
+1. 所有源文件必须是 UTF-8 without BOM。BOM 会导致前端 Vite/esbuild 解析失败。
+2. 包含中文的文件尤其容易在写入时被损坏，必须用正确 API。
+
+### 写入文件：正确 vs 错误
+
+| 操作 | 禁止做法 | 正确做法 |
+|------|----------|----------|
+| 创建新文件 | Set-Content -Encoding UTF8 | [System.IO.File]::WriteAllText(path, content, UTF8Encoding(false)) |
+| 读取文件 | Get-Content -Raw | [System.IO.File]::ReadAllText(path, UTF8Encoding(true)) |
+| 修改已有文件 | Get-Content + Select-String 截取拼装后 Set-Content | 先 ReadAllText -> 在内存中修改 -> WriteAllText |
+
+为什么 Set-Content -Encoding UTF8 不可靠：PowerShell 版本差异会导致实际输出为 UTF-8 with BOM 或使用系统代码页，造成中文乱码。
+
+### 标准代码模板
+
+创建新文件：
+```powershell
+$path = 'E:\IDEA\Xinki\Xinki-Portfolio\目标文件路径'
+$content = @'
+文件完整内容（中文直接写）
+'@
+[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
+```n
+修改已有文件：
+```powershell
+$path = 'E:\IDEA\Xinki\Xinki-Portfolio\目标文件路径'
+$content = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($true))
+$content = $content.Replace('旧文本', '新文本')
+[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
+```n
+### 写入后验证（必须执行）
+
+每次文件写入后检查：
+1. 无 BOM：ReadAllBytes 检查前 3 字节不是 EF BB BF
+2. 中文未损坏：Get-Content -Encoding UTF8 | Select-String 已知中文关键词
+
+### 其他禁止项
+
+- 禁止使用 apply_patch 工具 — 该工具在此环境中不可靠，统一用 Shell 写入
+- 修改路由文件 — 必须读取全文后在内存中修改再写回，不要用 Select-String 截取拼装
+- 修改 pom.xml — 同上，全文读取 -> 内存修改 -> 写回
+- Python 文件 — 同样遵循 UTF-8 无 BOM 规则
+
+### 前端文件特别说明
+
+- .vue 文件：template、script、style 中的中文必须可读
+- .ts 文件：import 路径、路由 meta.title 等中文必须正确
+- router/index.ts：新增路由时，确保花括号不重复，缩进与现有风格一致（2 空格）
+
 ## Git 提交规范
 
 每次 `git commit` 前，AI 助手必须执行以下操作：
