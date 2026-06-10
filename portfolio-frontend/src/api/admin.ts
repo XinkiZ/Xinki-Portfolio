@@ -19,3 +19,12 @@ export function updateKnowledge(id: number, data: any) { return request.put(`/ad
 export function deleteKnowledge(id: number) { return request.delete(`/admin/knowledge/${id}`); }
 export function getAdminMessages(params: { page: number; pageSize: number }) { return request.get("/admin/messages", { params }); }
 export function markMessageRead(id: number) { return request.put(`/admin/messages/${id}/read`); }
+
+// AI 文档分析
+export function analyzeDocument(file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return request.post("/admin/ai/analyze-document", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}

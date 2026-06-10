@@ -6,6 +6,7 @@
       <router-link to="/admin/skills">技能管理</router-link>
       <router-link to="/admin/timeline">时间线</router-link>
       <router-link to="/admin/knowledge">知识库</router-link>
+      <router-link to="/admin/ai-assistant">AI 助手</router-link>
       <router-link to="/admin/messages">留言管理</router-link>
       <a href="#" @click.prevent="logout">退出登录</a>
     </nav>

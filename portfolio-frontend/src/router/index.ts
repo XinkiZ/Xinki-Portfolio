@@ -70,6 +70,12 @@ const router = createRouter({
       meta: { title: "知识库管理", requiresAuth: true },
     },
     {
+      path: "/admin/ai-assistant",
+      name: "admin-ai-assistant",
+      component: () => import("@/views/admin/AdminAiAssistant.vue"),
+      meta: { title: "AI 助手", requiresAuth: true },
+    },
+    {
       path: "/admin/messages",
       name: "admin-messages",
       component: () => import("@/views/admin/MessageManage.vue"),
