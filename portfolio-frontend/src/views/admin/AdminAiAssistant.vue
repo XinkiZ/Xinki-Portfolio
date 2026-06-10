@@ -48,8 +48,12 @@
                 <input v-model="editableProject.title" />
               </div>
               <div class="form-group">
-                <label>描述</label>
-                <textarea v-model="editableProject.description" rows="5"></textarea>
+                <label>简介（卡片展示）</label>
+                <input v-model="editableProject.summary" maxlength="500" placeholder="一句话介绍，用于作品卡片展示" />
+              </div>
+              <div class="form-group">
+                <label>详细描述（支持 HTML）</label>
+                <textarea v-model="editableProject.description" rows="6"></textarea>
               </div>
               <div class="form-group">
                 <label>标签（逗号分隔）</label>
@@ -118,6 +122,7 @@ const result = ref<any>(null);
 
 const editableProject = reactive({
   title: "",
+  summary: "",
   description: "",
   tags: "",
   demoUrl: "",
@@ -191,6 +196,7 @@ async function saveProject() {
   try {
     await createProject({
       title: editableProject.title,
+      summary: editableProject.summary,
       description: editableProject.description,
       tags: editableProject.tags,
       demoUrl: editableProject.demoUrl,

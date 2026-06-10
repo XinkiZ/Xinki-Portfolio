@@ -25,8 +25,26 @@
     <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
       <div class="modal">
         <h2>{{ editingId ? '编辑' : '新增' }}作品</h2>
-        <div class="form-group"><label>标题</label><input v-model="form.title" /></div>
-        <div class="form-group"><label>描述</label><textarea v-model="form.description" rows="4"></textarea></div>
+        <div class="form-group">
+          <label>标题</label>
+          <input v-model="form.title" />
+        </div>
+
+        <!-- AI 生成区域 -->
+        <div class="ai-generate-section">
+          <div class="ai-generate-header">
+            <span class="ai-label">AI 智能生成</span>
+            <span class="ai-hint">上传 PDF/README/Markdown 文件，AI 自动生成简介和描述</span>
+          </div>
+          <div class="ai-generate-row">
+            <input type="file" accept=".pdf,.md,.txt,.markdown" @change="handleAIGenerate" ref="aiFileInput" />
+            <span v-if="aiGenerating" class="ai-status">AI 生成中...</span>
+            <span v-if="aiGenerated" class="ai-done">已生成</span>
+          </div>
+        </div>
+
+        <div class="form-group"><label>简介（卡片展示）</label><input v-model="form.summary" maxlength="500" placeholder="简短介绍，用于作品卡片展示" /></div>
+        <div class="form-group"><label>详细描述（支持 HTML）</label><textarea v-model="form.description" rows="6"></textarea></div>
         <div class="form-group">
           <label>封面图片</label>
           <div class="cover-upload">
@@ -48,7 +66,7 @@
         <div class="form-group"><label>排序</label><input v-model.number="form.sortOrder" type="number" /></div>
         <div class="form-group"><label><input v-model="form.isPublished" type="checkbox" :true-value="1" :false-value="0" /> 已发布</label></div>
         <div class="form-actions">
-          <button class="btn-primary" @click="save" :disabled="uploading">保存</button>
+          <button class="btn-primary" @click="save" :disabled="uploading || aiGenerating">保存</button>
           <button class="btn-ghost" @click="showForm = false">取消</button>
         </div>
       </div>
@@ -60,18 +78,43 @@
 import { ref, onMounted } from "vue";
 import { getAdminProjects, createProject, updateProject, deleteProject } from "@/api/admin";
 import { uploadFile } from "@/api/upload";
+import { generateProjectContent } from "@/api/ai";
 import AdminSidebar from "./AdminSidebar.vue";
 
 const list = ref<any[]>([]);
 const showForm = ref(false);
 const editingId = ref<number | null>(null);
 const uploading = ref(false);
+const aiGenerating = ref(false);
+const aiGenerated = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
-const form = ref({ title: "", description: "", coverUrl: "", demoUrl: "", githubUrl: "", tags: "", sortOrder: 0, isPublished: 1 });
+const aiFileInput = ref<HTMLInputElement | null>(null);
+const form = ref({ title: "", summary: "", description: "", coverUrl: "", demoUrl: "", githubUrl: "", tags: "", sortOrder: 0, isPublished: 1 });
 
 async function load() { try { const r: any = await getAdminProjects({ page: 1, pageSize: 100 }); list.value = r.data.records || []; } catch (e) {} }
-function openCreate() { editingId.value = null; form.value = { title: "", description: "", coverUrl: "", demoUrl: "", githubUrl: "", tags: "", sortOrder: 0, isPublished: 1 }; showForm.value = true; }
-function openEdit(item: any) { editingId.value = item.id; form.value = { ...item }; showForm.value = true; }
+function openCreate() { editingId.value = null; aiGenerated.value = false; form.value = { title: "", summary: "", description: "", coverUrl: "", demoUrl: "", githubUrl: "", tags: "", sortOrder: 0, isPublished: 1 }; showForm.value = true; }
+function openEdit(item: any) { editingId.value = item.id; aiGenerated.value = false; form.value = { ...item }; showForm.value = true; }
+
+async function handleAIGenerate(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  aiGenerating.value = true;
+  aiGenerated.value = false;
+  try {
+    const res: any = await generateProjectContent(file);
+    if (res.data.summary) form.value.summary = res.data.summary;
+    if (res.data.description) form.value.description = res.data.description;
+    aiGenerated.value = true;
+  } catch (err) {
+    console.error("AI generate failed:", err);
+    alert("AI 生成失败，请重试");
+  } finally {
+    aiGenerating.value = false;
+    // Reset file input so same file can be re-selected
+    if (aiFileInput.value) aiFileInput.value.value = "";
+  }
+}
 
 async function handleCoverUpload(e: Event) {
   const target = e.target as HTMLInputElement;
@@ -117,12 +160,21 @@ onMounted(load);
 .actions { display: flex; gap: 8px; }
 .table-thumb { width: 48px; height: 36px; object-fit: cover; border-radius: 2px; border: 1px solid var(--ink-border); }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-.modal { background: var(--ink-white); padding: 32px; border-radius: 8px; max-width: 520px; width: 100%; max-height: 80vh; overflow-y: auto; }
+.modal { background: var(--ink-white); padding: 32px; border-radius: 8px; max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; }
 .modal h2 { font-family: var(--font-serif); margin-bottom: 24px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-size: 13px; margin-bottom: 4px; }
 .form-group input[type="text"], .form-group input[type="number"], .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--ink-border); border-radius: 4px; font-size: 14px; }
 .form-actions { display: flex; gap: 12px; margin-top: 24px; }
+.ai-generate-section { margin-bottom: 16px; padding: 12px; border: 1px dashed var(--ink-border); border-radius: 6px; background: var(--ink-bg); }
+.ai-generate-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ai-label { font-size: 13px; font-weight: 600; color: var(--ink-seal); }
+.ai-hint { font-size: 12px; color: var(--ink-light); }
+.ai-generate-row { display: flex; align-items: center; gap: 8px; }
+.ai-generate-row input[type="file"] { flex: 1; font-size: 13px; }
+.ai-status { font-size: 13px; color: var(--ink-gray); animation: pulse 1.5s infinite; }
+.ai-done { font-size: 13px; color: #2e7d32; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .cover-upload { border: 1px solid var(--ink-border); border-radius: 4px; padding: 12px; }
 .cover-preview { position: relative; margin-bottom: 12px; }
 .cover-preview img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 4px; }

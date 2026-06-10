@@ -10,6 +10,7 @@ public class Project {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String title;
+    private String summary;
     private String description;
     private String coverUrl;
     private String demoUrl;

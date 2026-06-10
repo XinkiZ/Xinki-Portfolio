@@ -1,4 +1,4 @@
-﻿# Maven
+# Maven
 target/
 !.mvn/wrapper/maven-wrapper.jar
 *.class
@@ -30,3 +30,6 @@ Thumbs.db
 # Codex
 .codex/
 .agents/
+
+# Maven local repo cache
+.m2/

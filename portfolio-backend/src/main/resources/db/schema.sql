@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS user (
 CREATE TABLE IF NOT EXISTS project (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
-    description TEXT,
+    summary VARCHAR(500) COMMENT '简介，卡片展示用',
+    description TEXT COMMENT '详细内容，详情页展示用',
     cover_url VARCHAR(500),
     demo_url VARCHAR(500),
     github_url VARCHAR(500),
@@ -46,7 +47,8 @@ CREATE TABLE IF NOT EXISTS skill (
 CREATE TABLE IF NOT EXISTS timeline_event (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
-    description TEXT,
+    summary VARCHAR(500) COMMENT '简介，卡片展示用',
+    description TEXT COMMENT '详细内容，详情页展示用',
     type VARCHAR(20) NOT NULL COMMENT 'education/work/project',
     start_date DATE,
     end_date DATE,

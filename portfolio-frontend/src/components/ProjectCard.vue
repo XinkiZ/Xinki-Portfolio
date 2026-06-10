@@ -6,7 +6,7 @@
     </div>
     <div class="card-body">
       <h3>{{ project.title }}</h3>
-      <p>{{ truncate(project.description, 80) }}</p>
+      <p>{{ project.summary || truncate(project.description, 80) }}</p>
       <div class="card-tags">
         <span v-for="tag in tags" :key="tag" class="tag">{{ tag }}</span>
       </div>

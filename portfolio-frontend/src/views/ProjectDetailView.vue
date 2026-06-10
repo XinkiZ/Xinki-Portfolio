@@ -11,6 +11,7 @@
           <div class="detail-tags">
             <span v-for="tag in tags" :key="tag" class="tag">{{ tag }}</span>
           </div>
+          <p v-if="project.summary" class="detail-summary">{{ project.summary }}</p>
           <div class="detail-body" v-html="project.description"></div>
           <div class="detail-links">
             <a v-if="project.demoUrl" :href="project.demoUrl" target="_blank" class="btn-primary">在线演示</a>
@@ -48,6 +49,7 @@ onMounted(async () => {
 .detail-content h1 { font-family: var(--font-serif); font-size: 32px; margin: 24px 0 16px; }
 .detail-tags { display: flex; gap: 8px; margin-bottom: 32px; }
 .tag { padding: 4px 14px; background: var(--ink-bg); border-radius: 2px; font-size: 13px; }
+.detail-summary { font-family: var(--font-serif); font-size: 18px; color: var(--ink-gray); line-height: 1.8; max-width: 800px; margin-bottom: 32px; padding: 16px 0; border-top: 1px solid var(--ink-border); border-bottom: 1px solid var(--ink-border); }
 .detail-body { font-size: 16px; line-height: 2; max-width: 800px; }
 .detail-links { display: flex; gap: 16px; margin-top: 32px; }
 </style>

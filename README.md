@@ -1,6 +1,6 @@
 # Xinki Portfolio
 
-Xinki 的个人综合主页，水墨画风，包含首页 / 作品集 / 关于我 / 联系方式，全局悬浮 AI 助手（知识库 RAG），以及管理后台（含 AI 文档分析助手）。
+Xinki 的个人综合主页，水墨画风，包含首页 / 作品集 / 关于我 / 联系方式，全局悬浮 AI 助手（知识库 RAG），以及管理后台（含 AI 文档分析助手）。支持上传 PDF/README 文件，AI 自主生成作品简介和 HTML 描述。
 
 ## 技术栈
 
@@ -82,6 +82,7 @@ npm run dev
 | POST | `/api/ai/chat` | AI 聊天 |
 | GET | `/api/ai/chat/{sessionId}` | 对话历史 |
 | DELETE | `/api/ai/chat/{sessionId}` | 清除历史 |
+| POST | `/api/ai/chat/generate-content` | AI 生成作品内容（上传文件 → 自动生成简介+HTML 描述） |
 | POST | /api/admin/ai/analyze-document | AI 文档分析（上传 PDF/README 提取项目信息+技能） |
 | POST | `/api/upload` | 图片上传 → 阿里云 OSS |
 | POST | `/api/admin/login` | 后台登录 |
@@ -98,7 +99,7 @@ npm run dev
 | 表名 | 说明 |
 |------|------|
 | `user` | 管理员用户 |
-| `project` | 作品 |
+| `project` | 作品（含 `summary` 简介 + `description` HTML 详细描述） |
 | `skill` | 技能 |
 | `timeline_event` | 时间线事件 |
 | `contact_message` | 留言 |

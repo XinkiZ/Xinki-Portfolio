@@ -11,6 +11,7 @@ public class DocumentAnalysisDTO {
     @Data
     public static class ExtractedProject {
         private String title;
+        private String summary;
         private String description;
         private String tags;
         private String demoUrl;

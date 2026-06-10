@@ -60,27 +60,26 @@ public class AdminAIServiceImpl implements AdminAIService {
     }
 
     private String callBailianForExtraction(String documentContent, String filename) throws Exception {
-        String systemPrompt = "你是一个专业的技术项目分析助手。\n" +
-                "用户会上传一个文档（如PDF或README），你需要从中提取以下信息：\n" +
-                "1. 项目信息（标题、描述、技术标签、演示链接、源码链接）\n" +
-                "2. 技能列表：从文档中识别出的技术栈名称、分类、熟练度\n\n" +
-                "请严格以以下 JSON 格式输出（仅输出JSON，不要包含任何其他文本）：\n" +
-                "{\n" +
-                "  \"project\": {\n" +
-                "    \"title\": \"项目名称\",\n" +
-                "    \"description\": \"项目描述，尽量详细（200字内）\",\n" +
-                "    \"tags\": \"Spring Boot, Vue, MySQL\",\n" +
-                "    \"demoUrl\": \"演示链接，无则为空\",\n" +
-                "    \"githubUrl\": \"源码链接，无则为空\"\n" +
-                "  },\n" +
-                "  \"skills\": [\n" +
-                "    { \"name\": \"Spring Boot\", \"category\": \"后端\", \"level\": 85 },\n" +
-                "    { \"name\": \"Vue.js\", \"category\": \"前端\", \"level\": 80 }\n" +
-                "  ]\n" +
-                "}\n\n" +
-                "如果无法确定某个字段，请使用空字符串或 0 作为默认值。\n" +
-                "技能熟练度（level）范围 1-100，根据文档中描述的深度评估。\n" +
-                "tags 字段为逗号分隔的技术标签字符串。";
+        String systemPrompt = "你是一名资深技术文案编辑。阅读用户上传的项目文档，提取以下信息：\n\n" +
+                "## 1. 项目信息\n" +
+                "- title：项目名称\n" +
+                "- summary：一句话简介（50-120字），必须包含核心亮点和数据（如性能提升、用户规模）\n" +
+                "  忌空话堆砌（如\"功能强大、体验优秀\"）\n" +
+                "- description：详情页展示内容。自主判定复杂度：\n" +
+                "  简单项目 → <p> 段落；复杂项目 → 用 <h3> <ul><li> <ol><li> <pre><code> <blockquote> <strong> 组织\n" +
+                "  规则：禁止 <html><head><body>；代码块保留缩进；信息密度优先\n" +
+                "- tags：逗号分隔的技术标签\n" +
+                "- demoUrl / githubUrl：从文档提取，无则为空\n\n" +
+                "## description 质量参考\n" +
+                "好的输出：\n" +
+                "<h3>项目概述</h3>\n<p>苍穹外卖是面向中小型餐饮商家的全栈外卖点餐解决方案，覆盖用户端、商家端、管理后台三大场景。</p>\n<h3>技术架构</h3>\n<ul><li><strong>后端：</strong>Spring Boot 2.7 + MyBatis-Plus + Redis + WebSocket</li><li><strong>前端：</strong>Vue 3 + TypeScript + Pinia + Element Plus</li></ul>\n<h3>核心功能</h3>\n<ol><li>实时订单推送 — WebSocket 毫秒级状态同步</li><li>智能缓存 — Redis 缓存热门数据，响应时间降低 60%</li></ol>\n<blockquote>独立完成全栈开发，项目周期 3 个月</blockquote>\n\n" +
+                "差的输出：<p>这是一个很好的项目，功能非常强大，用了很多技术，非常优秀。</p> ← 信息量为零，禁止\n\n" +
+                "## 2. 技能列表\n" +
+                "- name：技术名称\n" +
+                "- category：分类（后端 / 前端 / 数据库 / 运维 / 工具）\n" +
+                "- level：熟练度 1-100\n\n" +
+                "严格输出纯 JSON（不要 markdown 包裹）：\n" +
+                "{\"project\":{\"title\":\"\",\"summary\":\"\",\"description\":\"\",\"tags\":\"\",\"demoUrl\":\"\",\"githubUrl\":\"\"},\"skills\":[{\"name\":\"\",\"category\":\"\",\"level\":85}]}";
 
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(Map.of("role", "system", "content", systemPrompt));
@@ -91,7 +90,7 @@ public class AdminAIServiceImpl implements AdminAIService {
                 "model", aiConfig.getModel(),
                 "messages", messages,
                 "temperature", 0.3,
-                "max_tokens", 2000
+                "max_tokens", 4096
         );
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -123,6 +122,7 @@ public class AdminAIServiceImpl implements AdminAIService {
                 JsonNode p = root.get("project");
                 ExtractedProject project = new ExtractedProject();
                 project.setTitle(p.path("title").asText(""));
+                project.setSummary(p.path("summary").asText(""));
                 project.setDescription(p.path("description").asText(""));
                 project.setTags(p.path("tags").asText(""));
                 project.setDemoUrl(p.path("demoUrl").asText(""));
