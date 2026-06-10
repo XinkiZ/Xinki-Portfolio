@@ -28,3 +28,7 @@ export function analyzeDocument(file: File): Promise<any> {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
+// 个人信息
+export function getProfile() { return request.get("/admin/profile"); }
+export function updateProfile(data: { username?: string; avatar?: string; intro?: string }) { return request.put("/admin/profile", data); }
+export function updatePassword(data: { oldPassword: string; newPassword: string }) { return request.put("/admin/profile/password", data); }

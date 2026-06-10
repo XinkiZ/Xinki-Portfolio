@@ -46,6 +46,12 @@ const router = createRouter({
       meta: { title: "管理后台", requiresAuth: true },
     },
     {
+      path: "/admin/profile",
+      name: "admin-profile",
+      component: () => import("@/views/admin/ProfileManage.vue"),
+      meta: { title: "个人设置", requiresAuth: true },
+    },
+    {
       path: "/admin/projects",
       name: "admin-projects",
       component: () => import("@/views/admin/ProjectManage.vue"),

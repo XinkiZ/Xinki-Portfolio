@@ -39,10 +39,10 @@ Xinki-Portfolio/
 │   └── src/
 │       ├── main.ts                   # 入口：Pinia + Router + 全局样式
 │       ├── App.vue                   # Header + router-view + Footer + AIChatBubble
-│       ├── router/index.ts           # 12 条路由（含管理后台 auth 守卫）
+│       ├── router/index.ts           # 13 条路由（含管理后台 auth 守卫）
 │       ├── stores/chat.ts            # AI 聊天 Pinia store
 │       ├── api/                      # axios 封装 + upload 模块 + ai 模块
-│       ├── views/                    # 公开页面 + admin/ 管理 CRUD（含 AI 文档分析助手）
+│       ├── views/                    # 公开页面 + admin/ 管理 CRUD（含 个人设置 + AI 文档分析助手）
 │       ├── components/               # AppHeader, AppFooter, AIChatBubble, ProjectCard
 │       └── styles/                   # variables.css, global.css, ink-effects.css
 └── docs/superpowers/                 # 设计文档
@@ -111,6 +111,9 @@ npm run dev    # http://localhost:5173，/api 自动 proxy 到 8080
 | DELETE | /api/ai/chat/{sessionId} | 清除历史 |
 | POST | /api/ai/chat/generate-content | AI 生成作品内容（上传文件 → summary + HTML description） |
 | POST | /api/admin/ai/analyze-document | AI 文档分析（上传 PDF/README 提取项目+技能） |
+| GET | /api/admin/profile | 获取当前用户信息（需 JWT） |
+| PUT | /api/admin/profile | 更新用户名、头像、简介（需 JWT） |
+| PUT | /api/admin/profile/password | 修改密码（需旧密码验证，需 JWT） |
 | POST | /api/upload | 图片上传（→ 阿里云 OSS） |
 | POST | /api/admin/login | 后台登录 |
 | CRUD | /api/admin/* | 管理 CRUD（需 JWT） |

@@ -2,6 +2,7 @@
   <aside class="admin-sidebar">
     <nav>
       <router-link to="/admin">仪表盘</router-link>
+      <router-link to="/admin/profile">个人设置</router-link>
       <router-link to="/admin/projects">作品管理</router-link>
       <router-link to="/admin/skills">技能管理</router-link>
       <router-link to="/admin/timeline">时间线</router-link>

@@ -1,6 +1,6 @@
 # Xinki Portfolio
 
-Xinki 的个人综合主页，水墨画风，包含首页 / 作品集 / 关于我 / 联系方式，全局悬浮 AI 助手（知识库 RAG），以及管理后台（含 AI 文档分析助手）。支持上传 PDF/README 文件，AI 自主生成作品简介和 HTML 描述。
+Xinki 的个人综合主页，水墨画风，包含首页 / 作品集 / 关于我 / 联系方式，全局悬浮 AI 助手（知识库 RAG），以及管理后台（含个人信息设置 + AI 文档分析助手）。支持上传 PDF/README 文件，AI 自主生成作品简介和 HTML 描述。
 
 ## 技术栈
 
@@ -31,7 +31,7 @@ Xinki-Portfolio/
 │   └── src/
 │       ├── api/                      # axios 封装 + 上传模块
 │       ├── components/               # 公共组件
-│       ├── router/                   # 路由（12条，含 auth 守卫）
+│       ├── router/                   # 路由（13条，含 auth 守卫）
 │       ├── stores/                   # Pinia 状态管理
 │       ├── styles/                   # 水墨主题 CSS 变量 & 动画
 │       └── views/                    # 页面视图 + 管理后台 CRUD
@@ -84,6 +84,9 @@ npm run dev
 | DELETE | `/api/ai/chat/{sessionId}` | 清除历史 |
 | POST | `/api/ai/chat/generate-content` | AI 生成作品内容（上传文件 → 自动生成简介+HTML 描述） |
 | POST | /api/admin/ai/analyze-document | AI 文档分析（上传 PDF/README 提取项目信息+技能） |
+| GET | `/api/admin/profile` | 获取当前登录用户信息（需 JWT） |
+| PUT | `/api/admin/profile` | 更新用户名、头像、个人简介（需 JWT） |
+| PUT | `/api/admin/profile/password` | 修改密码（需旧密码验证，需 JWT） |
 | POST | `/api/upload` | 图片上传 → 阿里云 OSS |
 | POST | `/api/admin/login` | 后台登录 |
 | CRUD | `/api/admin/*` | 管理 CRUD（需 JWT） |

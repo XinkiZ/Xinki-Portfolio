@@ -43,6 +43,58 @@ public class AdminController {
         return Result.success(data);
     }
 
+    // ===== 个人信息 =====
+    @GetMapping("/profile")
+    public Result<?> profile(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserId(token);
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return Result.error(404, "用户不存在");
+        }
+        user.setPassword(null);
+        return Result.success(user);
+    }
+
+    @PutMapping("/profile")
+    public Result<?> updateProfile(@RequestHeader("Authorization") String authHeader,
+                                   @RequestBody Map<String, String> body) {
+        String token = authHeader.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserId(token);
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return Result.error(404, "用户不存在");
+        }
+        if (body.containsKey("username")) user.setUsername(body.get("username"));
+        if (body.containsKey("avatar")) user.setAvatar(body.get("avatar"));
+        if (body.containsKey("intro")) user.setIntro(body.get("intro"));
+        userMapper.updateById(user);
+        user.setPassword(null);
+        return Result.success(user);
+    }
+
+    @PutMapping("/profile/password")
+    public Result<?> updatePassword(@RequestHeader("Authorization") String authHeader,
+                                    @RequestBody Map<String, String> body) {
+        String token = authHeader.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserId(token);
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return Result.error(404, "用户不存在");
+        }
+        String oldPassword = body.get("oldPassword");
+        String newPassword = body.get("newPassword");
+        if (oldPassword == null || newPassword == null) {
+            return Result.error(400, "请输入旧密码和新密码");
+        }
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return Result.error(400, "旧密码错误");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+        return Result.success("密码修改成功");
+    }
+
     // ===== 仪表盘 =====
     @GetMapping("/dashboard")
     public Result<?> dashboard() {
