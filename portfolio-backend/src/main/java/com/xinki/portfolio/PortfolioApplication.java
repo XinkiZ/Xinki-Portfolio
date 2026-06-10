@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio;
+package com.xinki.portfolio;
 
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;

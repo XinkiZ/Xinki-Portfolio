@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="admin-login-page">
     <div class="login-card fade-up">
       <h1>管理后台</h1>

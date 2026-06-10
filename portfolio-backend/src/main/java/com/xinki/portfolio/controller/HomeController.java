@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.controller;
+package com.xinki.portfolio.controller;
 
 import com.xinki.portfolio.common.Result;
 import com.xinki.portfolio.service.HomeService;

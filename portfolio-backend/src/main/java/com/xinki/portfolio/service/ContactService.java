@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.service;
+package com.xinki.portfolio.service;
 
 import com.xinki.portfolio.entity.ContactMessage;
 

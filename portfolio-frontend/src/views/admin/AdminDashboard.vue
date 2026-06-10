@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="admin-page">
     <div class="container"><div class="admin-layout">
       <AdminSidebar />

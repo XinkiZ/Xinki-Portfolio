@@ -1,4 +1,4 @@
-﻿import request from "./request";
+import request from "./request";
 export function login(data: { username: string; password: string }) { return request.post("/admin/login", data); }
 export function getDashboard() { return request.get("/admin/dashboard"); }
 export function getAdminProjects(params: { page: number; pageSize: number }) { return request.get("/admin/projects", { params }); }

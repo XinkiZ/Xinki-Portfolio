@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.service.impl;
+package com.xinki.portfolio.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -105,7 +105,7 @@ public class AIChatServiceImpl implements AIChatService {
             );
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                    .uri(URI.create("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + aiConfig.getApiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
@@ -116,7 +116,7 @@ public class AIChatServiceImpl implements AIChatService {
             return root.path("choices").get(0).path("message").path("content").asText();
 
         } catch (Exception e) {
-            log.error("OpenAI API call failed", e);
+            log.error("Bailian API call failed", e);
             return "抱歉，我暂时无法回答，请稍后再试。";
         }
     }

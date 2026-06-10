@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.common;
+package com.xinki.portfolio.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

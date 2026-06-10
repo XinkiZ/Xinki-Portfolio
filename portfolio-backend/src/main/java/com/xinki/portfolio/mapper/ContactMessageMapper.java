@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.mapper;
+package com.xinki.portfolio.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.xinki.portfolio.entity.ContactMessage;

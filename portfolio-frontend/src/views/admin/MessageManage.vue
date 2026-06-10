@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="admin-page"><div class="container"><div class="admin-layout">
     <AdminSidebar /><main class="admin-main">
       <div class="page-header"><h1>留言管理</h1></div>

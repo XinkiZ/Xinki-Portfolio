@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <aside class="admin-sidebar">
     <nav>
       <router-link to="/admin">仪表盘</router-link>

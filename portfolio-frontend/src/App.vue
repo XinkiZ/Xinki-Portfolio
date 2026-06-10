@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AppHeader />
   <main>
     <router-view v-slot="{ Component }">

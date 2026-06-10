@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="ai-chat-wrapper">
     <button class="ai-bubble-btn" @click="chat.toggle()" :class="{ active: chat.isOpen }">
       <span class="bubble-icon">砚</span>

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <header class="app-header" :class="{ scrolled: isScrolled }">
     <div class="container header-inner">
       <router-link to="/" class="logo">

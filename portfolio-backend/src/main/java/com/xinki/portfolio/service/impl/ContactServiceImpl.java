@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.service.impl;
+package com.xinki.portfolio.service.impl;
 
 import com.xinki.portfolio.entity.ContactMessage;
 import com.xinki.portfolio.mapper.ContactMessageMapper;

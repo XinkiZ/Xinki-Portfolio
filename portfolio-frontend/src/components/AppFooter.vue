@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <footer class="app-footer">
     <div class="container footer-content">
       <div class="seal-stamp">Xinki</div>

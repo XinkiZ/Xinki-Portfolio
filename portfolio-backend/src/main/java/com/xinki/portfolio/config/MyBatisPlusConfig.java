@@ -1,4 +1,4 @@
-﻿package com.xinki.portfolio.config;
+package com.xinki.portfolio.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
