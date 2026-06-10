@@ -3,9 +3,11 @@
     <AdminSidebar /><main class="admin-main">
       <div class="page-header"><h1>技能管理</h1><button class="btn-primary" @click="openCreate">+ 新增</button></div>
       <table class="data-table">
-        <thead><tr><th>ID</th><th>名称</th><th>分类</th><th>熟练度</th><th>操作</th></tr></thead>
+        <thead><tr><th>ID</th><th>图标</th><th>名称</th><th>分类</th><th>熟练度</th><th>操作</th></tr></thead>
         <tbody><tr v-for="item in list" :key="item.id">
-          <td>{{ item.id }}</td><td>{{ item.name }}</td><td>{{ item.category }}</td><td>{{ item.level }}</td>
+          <td>{{ item.id }}</td>
+          <td><img v-if="item.icon" :src="item.icon" class="table-thumb" /></td>
+          <td>{{ item.name }}</td><td>{{ item.category }}</td><td>{{ item.level }}</td>
           <td class="actions"><button @click="openEdit(item)">编辑</button><button @click="handleDelete(item.id)" class="btn-danger">删除</button></td>
         </tr></tbody>
       </table>
@@ -16,9 +18,24 @@
     <div class="modal"><h2>{{ editingId ? '编辑' : '新增' }}技能</h2>
       <div class="form-group"><label>名称</label><input v-model="form.name" /></div>
       <div class="form-group"><label>分类</label><input v-model="form.category" /></div>
+      <div class="form-group">
+        <label>图标</label>
+        <div class="icon-upload">
+          <div class="icon-preview" v-if="form.icon">
+            <img :src="form.icon" />
+            <button class="btn-clear" @click="form.icon = ''">×</button>
+          </div>
+          <div class="icon-input-row">
+            <input type="file" accept="image/*" @change="handleIconUpload" ref="fileInput" />
+            <span class="upload-divider">或</span>
+            <input v-model="form.icon" placeholder="直接粘贴图标 URL" />
+          </div>
+          <span v-if="uploading" class="upload-status">上传中...</span>
+        </div>
+      </div>
       <div class="form-group"><label>熟练度</label><input v-model.number="form.level" type="number" min="0" max="100" /></div>
       <div class="form-group"><label>排序</label><input v-model.number="form.sortOrder" type="number" /></div>
-      <div class="form-actions"><button class="btn-primary" @click="save">保存</button><button class="btn-ghost" @click="showForm = false">取消</button></div>
+      <div class="form-actions"><button class="btn-primary" @click="save" :disabled="uploading">保存</button><button class="btn-ghost" @click="showForm = false">取消</button></div>
     </div>
   </div>
   </div>
@@ -27,13 +44,31 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { getAdminSkills, createSkill, updateSkill, deleteSkill } from "@/api/admin";
+import { uploadFile } from "@/api/upload";
 import AdminSidebar from "./AdminSidebar.vue";
 const list = ref<any[]>([]);
 const showForm = ref(false); const editingId = ref<number | null>(null);
-const form = ref({ name: "", category: "", level: 50, sortOrder: 0 });
+const uploading = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
+const form = ref({ name: "", category: "", level: 50, sortOrder: 0, icon: "" });
 async function load() { try { const r: any = await getAdminSkills(); list.value = r.data || []; } catch (e) {} }
-function openCreate() { editingId.value = null; form.value = { name: "", category: "", level: 50, sortOrder: 0 }; showForm.value = true; }
+function openCreate() { editingId.value = null; form.value = { name: "", category: "", level: 50, sortOrder: 0, icon: "" }; showForm.value = true; }
 function openEdit(item: any) { editingId.value = item.id; form.value = { ...item }; showForm.value = true; }
+async function handleIconUpload(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  uploading.value = true;
+  try {
+    const res: any = await uploadFile(file);
+    form.value.icon = res.data.url;
+  } catch (err) {
+    console.error("Upload failed:", err);
+    alert("上传失败，请重试");
+  } finally {
+    uploading.value = false;
+  }
+}
 async function save() { try { if (editingId.value) await updateSkill(editingId.value, form.value); else await createSkill(form.value); showForm.value = false; load(); } catch (e) {} }
 async function handleDelete(id: number) { if (confirm("确定？")) { await deleteSkill(id); load(); } }
 onMounted(load);
@@ -44,15 +79,26 @@ onMounted(load);
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .page-header h1 { font-family: var(--font-serif); }
 .btn-primary { padding: 10px 24px; background: var(--ink-black); color: var(--ink-white); border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-ghost { padding: 10px 24px; border: 1px solid var(--ink-black); background: none; border-radius: 4px; cursor: pointer; }
 .btn-danger { color: var(--ink-seal); background: none; border: none; cursor: pointer; }
+.btn-clear { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 1; }
 .data-table { width: 100%; border-collapse: collapse; background: var(--ink-white); border: 1px solid var(--ink-border); }
 .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--ink-border); font-size: 14px; }
 .data-table th { background: var(--ink-bg); font-weight: 600; } .actions { display: flex; gap: 8px; }
+.table-thumb { width: 32px; height: 32px; object-fit: contain; border-radius: 2px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 .modal { background: var(--ink-white); padding: 32px; border-radius: 8px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; }
 .modal h2 { font-family: var(--font-serif); margin-bottom: 24px; } .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-size: 13px; margin-bottom: 4px; }
-.form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--ink-border); border-radius: 4px; font-size: 14px; }
+.form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 8px 12px; border: 1px solid var(--ink-border); border-radius: 4px; font-size: 14px; }
 .form-actions { display: flex; gap: 12px; margin-top: 24px; }
+.icon-upload { border: 1px solid var(--ink-border); border-radius: 4px; padding: 12px; }
+.icon-preview { position: relative; margin-bottom: 12px; display: inline-block; }
+.icon-preview img { width: 64px; height: 64px; object-fit: contain; border-radius: 4px; border: 1px solid var(--ink-border); }
+.icon-input-row { display: flex; align-items: center; gap: 8px; }
+.icon-input-row input[type="file"] { flex: 1; font-size: 13px; }
+.icon-input-row input[type="text"] { flex: 2; }
+.upload-divider { color: var(--ink-light); font-size: 13px; }
+.upload-status { display: block; margin-top: 8px; font-size: 13px; color: var(--ink-gray); }
 </style>
