@@ -7,7 +7,6 @@ import com.xinki.portfolio.mapper.ProjectMapper;
 import com.xinki.portfolio.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -16,17 +15,15 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectMapper projectMapper;
 
     @Override
-    public Page<Project> page(Integer pageNum, Integer pageSize, String tag) {
+    public Page<Project> page(Integer page, Integer pageSize, String tag) {
         LambdaQueryWrapper<Project> wrapper = new LambdaQueryWrapper<Project>()
                 .eq(Project::getIsPublished, 1)
                 .orderByDesc(Project::getSortOrder)
                 .orderByDesc(Project::getCreatedAt);
-
-        if (StringUtils.hasText(tag)) {
+        if (tag != null && !tag.isEmpty()) {
             wrapper.like(Project::getTags, tag);
         }
-
-        return projectMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        return projectMapper.selectPage(new Page<>(page, pageSize), wrapper);
     }
 
     @Override

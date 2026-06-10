@@ -11,6 +11,16 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 20MB
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+    timeout: 3000ms
 
 mybatis-plus:
   configuration:
@@ -23,6 +33,7 @@ mybatis-plus:
 bailian:
   api-key: sk-dcc5b7daf60d4fb4b7c5314f94a9587c
   model: qwen-plus
+  embedding-model: text-embedding-v3
 
 jwt:
   secret: xinki-portfolio-jwt-secret-key-2026
@@ -32,3 +43,10 @@ aliyun:
   oss:
     endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
     bucket-name: ${OSS_BUCKET_NAME:sky-17371}
+
+rag:
+  top-k: 3
+  max-chunks-per-file: 50
+  min-chunk-length: 50
+  max-chunk-length: 800
+  max-context-chars: 2000

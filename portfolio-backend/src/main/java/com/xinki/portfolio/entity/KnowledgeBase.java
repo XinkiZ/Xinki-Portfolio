@@ -9,9 +9,11 @@ import java.time.LocalDateTime;
 public class KnowledgeBase {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String question;
-    private String answer;
+    private String content;
     private String embedding;
+    private String sourceFile;
+    private String sourceHash;
+    private Integer chunkIndex;
     private String category;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

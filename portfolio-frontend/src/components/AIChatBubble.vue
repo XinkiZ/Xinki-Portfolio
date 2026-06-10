@@ -6,7 +6,11 @@
     </button>
 
     <transition name="chat-slide">
-      <div v-if="chat.isOpen" class="chat-panel">
+      <div v-if="chat.isOpen" class="chat-panel" :style="panelStyle">
+        <!-- Resize handle: top-left corner -->
+        <div class="resize-handle" @mousedown="startResize" title="拖拽调整大小">
+          <svg width="12" height="12" viewBox="0 0 12 12"><path d="M0 12 L12 0 M0 8 L8 0 M0 4 L4 0" stroke="#999" stroke-width="1.2" fill="none"/></svg>
+        </div>
         <div class="chat-header">
           <span class="chat-title">砚·墨问</span>
           <div class="chat-header-actions">
@@ -20,7 +24,7 @@
             <div class="msg-avatar">{{ msg.role === 'user' ? '我' : '砚' }}</div>
             <div class="msg-content">{{ msg.content }}</div>
           </div>
-          <div v-if="chat.loading" class="msg assistant">
+          <div v-if="chat.loading && !chat.streamingContent" class="msg assistant">
             <div class="msg-avatar">砚</div>
             <div class="msg-content typing">···</div>
           </div>
@@ -36,16 +40,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, reactive, watch, nextTick, onUnmounted, computed } from "vue";
 import { useChatStore } from "@/stores/chat";
 
 const chat = useChatStore();
 const input = ref("");
 const msgContainer = ref<HTMLElement | null>(null);
 
+// Persisted size
+const saved = (() => { try { const v = JSON.parse(localStorage.getItem("chat_panel_size") || ""); if (v && v.w && v.h) return v; } catch {} return null; })();
+const panelWidth = ref(saved?.w || 360);
+const panelHeight = ref(saved?.h || 480);
+const isResizing = ref(false);
+
+const MIN_W = 300, MAX_W = 640;
+const MIN_H = 320, MAX_H = 760;
+
+// Resize: drag top-left handle
+let resizeStart = { x: 0, y: 0, w: 0, h: 0 };
+
+function startResize(e: MouseEvent) {
+  isResizing.value = true;
+  resizeStart = { x: e.clientX, y: e.clientY, w: panelWidth.value, h: panelHeight.value };
+  window.addEventListener("mousemove", onResizeMove);
+  window.addEventListener("mouseup", onResizeEnd);
+  e.preventDefault();
+}
+
+function onResizeMove(e: MouseEvent) {
+  const dx = resizeStart.x - e.clientX;
+  const dy = resizeStart.y - e.clientY;
+  panelWidth.value = Math.min(MAX_W, Math.max(MIN_W, resizeStart.w + dx));
+  panelHeight.value = Math.min(MAX_H, Math.max(MIN_H, resizeStart.h + dy));
+}
+
+function onResizeEnd() {
+  isResizing.value = false;
+  window.removeEventListener("mousemove", onResizeMove);
+  window.removeEventListener("mouseup", onResizeEnd);
+  localStorage.setItem("chat_panel_size", JSON.stringify({ w: panelWidth.value, h: panelHeight.value }));
+}
+
+onUnmounted(() => {
+  window.removeEventListener("mousemove", onResizeMove);
+  window.removeEventListener("mouseup", onResizeEnd);
+});
+
+const panelStyle = computed(() => ({
+  width: panelWidth.value + "px",
+  height: panelHeight.value + "px",
+  "--msg-max-width": (panelWidth.value - 64) + "px",
+}));
+
 watch(() => chat.isOpen, (val) => { if (val) chat.loadHistory(); });
 
-watch(() => chat.messages.length, async () => {
+watch([() => chat.messages.length, () => chat.streamingContent], async () => {
   await nextTick();
   if (msgContainer.value) msgContainer.value.scrollTop = msgContainer.value.scrollHeight;
 });
@@ -71,12 +120,21 @@ function sendMsg() {
 .ai-bubble-btn.active { background: var(--ink-black); color: var(--ink-white); border-color: var(--ink-black); }
 .bubble-hint { font-family: var(--font-sans); font-size: 10px; position: absolute; bottom: -20px; white-space: nowrap; color: var(--ink-light); }
 .chat-panel {
-  position: absolute; bottom: 80px; right: 0; width: 360px; height: 480px;
+  position: absolute; bottom: 80px; right: 0;
   background: var(--ink-paper); border: 1px solid var(--ink-border);
   border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.12);
   display: flex; flex-direction: column; overflow: hidden;
+  will-change: width, height;
+  min-width: 300px; min-height: 320px;
 }
-.chat-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--ink-border); }
+.resize-handle {
+  position: absolute; top: 0; left: 0; z-index: 10;
+  padding: 6px; cursor: nw-resize; opacity: 0;
+  transition: opacity 0.2s; border-radius: 8px 0 0 0;
+}
+.chat-panel:hover .resize-handle { opacity: 1; }
+.resize-handle:hover { opacity: 1 !important; background: rgba(0,0,0,0.04); }
+.chat-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; padding-left: 28px; border-bottom: 1px solid var(--ink-border); user-select: none; }
 .chat-title { font-family: var(--font-serif); font-size: 16px; }
 .chat-header-actions { display: flex; gap: 8px; }
 .btn-clear, .btn-close { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--ink-light); }
@@ -88,7 +146,7 @@ function sendMsg() {
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-family: var(--font-serif); flex-shrink: 0;
 }
-.msg-content { max-width: 240px; padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.6; }
+.msg-content { max-width: var(--msg-max-width, 240px); padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
 .msg.user .msg-content { background: var(--ink-black); color: var(--ink-white); }
 .msg.assistant .msg-content { background: var(--ink-white); border: 1px solid var(--ink-border); }
 .typing { color: var(--ink-light); }

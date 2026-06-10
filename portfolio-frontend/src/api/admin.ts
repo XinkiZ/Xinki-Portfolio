@@ -5,6 +5,7 @@ export function getAdminProjects(params: { page: number; pageSize: number }) { r
 export function createProject(data: any) { return request.post("/admin/projects", data); }
 export function updateProject(id: number, data: any) { return request.put(`/admin/projects/${id}`, data); }
 export function deleteProject(id: number) { return request.delete(`/admin/projects/${id}`); }
+export function reindexProjects() { return request.post("/admin/projects/reindex"); }
 export function getAdminSkills() { return request.get("/admin/skills"); }
 export function createSkill(data: any) { return request.post("/admin/skills", data); }
 export function updateSkill(id: number, data: any) { return request.put(`/admin/skills/${id}`, data); }
@@ -17,6 +18,8 @@ export function getAdminKnowledge(params: { page: number; pageSize: number }) { 
 export function createKnowledge(data: any) { return request.post("/admin/knowledge", data); }
 export function updateKnowledge(id: number, data: any) { return request.put(`/admin/knowledge/${id}`, data); }
 export function deleteKnowledge(id: number) { return request.delete(`/admin/knowledge/${id}`); }
+export function importKnowledge(file: File): Promise<any> { const fd = new FormData(); fd.append("file", file); return request.post("/admin/knowledge/import", fd, { headers: { "Content-Type": "multipart/form-data" } }); }
+export function deleteKnowledgeFile(sourceHash: string) { return request.delete(`/admin/knowledge/file/${sourceHash}`); }
 export function getAdminMessages(params: { page: number; pageSize: number }) { return request.get("/admin/messages", { params }); }
 export function markMessageRead(id: number) { return request.put(`/admin/messages/${id}/read`); }
 

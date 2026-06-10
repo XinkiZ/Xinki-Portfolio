@@ -6,12 +6,19 @@ import com.xinki.portfolio.common.Result;
 import com.xinki.portfolio.dto.LoginDTO;
 import com.xinki.portfolio.entity.*;
 import com.xinki.portfolio.mapper.*;
+import com.xinki.portfolio.service.DocumentChunkService;
+import com.xinki.portfolio.service.EmbeddingService;
+import com.xinki.portfolio.service.ContentIndexService;
+import com.xinki.portfolio.service.VectorCacheService;
 import com.xinki.portfolio.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,6 +32,10 @@ public class AdminController {
     private final TimelineEventMapper timelineEventMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final ContactMessageMapper contactMessageMapper;
+    private final DocumentChunkService documentChunkService;
+    private final EmbeddingService embeddingService;
+    private final ContentIndexService contentIndexService;
+    private final VectorCacheService vectorCacheService;
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -121,6 +132,7 @@ public class AdminController {
     @PostMapping("/projects")
     public Result<?> createProject(@RequestBody Project project) {
         projectMapper.insert(project);
+        contentIndexService.indexProject(project);
         return Result.success("创建成功");
     }
 
@@ -128,13 +140,24 @@ public class AdminController {
     public Result<?> updateProject(@PathVariable Long id, @RequestBody Project project) {
         project.setId(id);
         projectMapper.updateById(project);
+        // Re-index (will remove old + create new, or remove if unpublished)
+        Project updated = projectMapper.selectById(id);
+        if (updated != null) contentIndexService.indexProject(updated);
         return Result.success("更新成功");
     }
 
     @DeleteMapping("/projects/{id}")
     public Result<?> deleteProject(@PathVariable Long id) {
         projectMapper.deleteById(id);
+        contentIndexService.removeProjectIndex(id);
         return Result.success("删除成功");
+    }
+
+    /** 重建所有已发布作品的 RAG 索引（批量） */
+    @PostMapping("/projects/reindex")
+    public Result<?> reindexProjects() {
+        Map<String, int[]> result = contentIndexService.rebuildAll();
+        return Result.success(result);
     }
 
     // ===== 技能管理 =====
@@ -147,6 +170,7 @@ public class AdminController {
     @PostMapping("/skills")
     public Result<?> createSkill(@RequestBody Skill skill) {
         skillMapper.insert(skill);
+        contentIndexService.indexSkill(skill);
         return Result.success("创建成功");
     }
 
@@ -154,12 +178,15 @@ public class AdminController {
     public Result<?> updateSkill(@PathVariable Long id, @RequestBody Skill skill) {
         skill.setId(id);
         skillMapper.updateById(skill);
+        Skill updated = skillMapper.selectById(id);
+        if (updated != null) contentIndexService.indexSkill(updated);
         return Result.success("更新成功");
     }
 
     @DeleteMapping("/skills/{id}")
     public Result<?> deleteSkill(@PathVariable Long id) {
         skillMapper.deleteById(id);
+        contentIndexService.removeSkillIndex(id);
         return Result.success("删除成功");
     }
 
@@ -173,6 +200,7 @@ public class AdminController {
     @PostMapping("/timeline")
     public Result<?> createTimeline(@RequestBody TimelineEvent event) {
         timelineEventMapper.insert(event);
+        contentIndexService.indexTimeline(event);
         return Result.success("创建成功");
     }
 
@@ -180,12 +208,15 @@ public class AdminController {
     public Result<?> updateTimeline(@PathVariable Long id, @RequestBody TimelineEvent event) {
         event.setId(id);
         timelineEventMapper.updateById(event);
+        TimelineEvent updated = timelineEventMapper.selectById(id);
+        if (updated != null) contentIndexService.indexTimeline(updated);
         return Result.success("更新成功");
     }
 
     @DeleteMapping("/timeline/{id}")
     public Result<?> deleteTimeline(@PathVariable Long id) {
         timelineEventMapper.deleteById(id);
+        contentIndexService.removeTimelineIndex(id);
         return Result.success("删除成功");
     }
 
@@ -215,6 +246,86 @@ public class AdminController {
     public Result<?> deleteKnowledge(@PathVariable Long id) {
         knowledgeBaseMapper.deleteById(id);
         return Result.success("删除成功");
+    }
+
+    /** Delete all chunks belonging to a source file (by hash). */
+    @DeleteMapping("/knowledge/file/{sourceHash}")
+    public Result<?> deleteKnowledgeFile(@PathVariable String sourceHash) {
+        int deleted = knowledgeBaseMapper.delete(
+                new LambdaQueryWrapper<KnowledgeBase>().eq(KnowledgeBase::getSourceHash, sourceHash));
+        return Result.success("已删除 " + deleted + " 条片段");
+    }
+
+    /** Import document: parse → chunk → embed → store. */
+    @PostMapping("/knowledge/import")
+    public Result<?> importKnowledge(@RequestParam("file") MultipartFile file) {
+        // Validate
+        if (file == null || file.isEmpty()) {
+            return Result.error(400, "请选择文件");
+        }
+        String filename = file.getOriginalFilename();
+
+        // Dedup: compute SHA-256
+        String sha256 = documentChunkService.computeHash(file);
+        List<Long> existingIds = vectorCacheService.getHashMapping(sha256);
+        // Also check DB directly
+        List<KnowledgeBase> existingDB = knowledgeBaseMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeBase>().eq(KnowledgeBase::getSourceHash, sha256));
+        if (!existingDB.isEmpty()) {
+            // Delete old chunks for this file
+            for (KnowledgeBase kb : existingDB) {
+                vectorCacheService.remove(kb.getId());
+            }
+            knowledgeBaseMapper.delete(
+                    new LambdaQueryWrapper<KnowledgeBase>().eq(KnowledgeBase::getSourceHash, sha256));
+            vectorCacheService.removeHashMapping(sha256);
+        }
+
+        // Chunk
+        List<String> chunks = documentChunkService.chunkFile(file);
+        if (chunks.isEmpty()) {
+            return Result.error(400, "未能从文件中提取到有效文本（可能为空、扫描版 PDF 或不支持的格式）");
+        }
+
+        // Process chunks
+        int successCount = 0;
+        List<Map<String, Object>> errors = new ArrayList<>();
+        List<Long> chunkIds = new ArrayList<>();
+
+        for (int i = 0; i < chunks.size(); i++) {
+            String chunkText = chunks.get(i);
+            float[] vec = embeddingService.generateEmbedding(chunkText);
+            if (vec == null) {
+                errors.add(Map.of("chunkIndex", i, "reason", "Embedding 生成失败，已跳过"));
+                continue;
+            }
+
+            KnowledgeBase kb = new KnowledgeBase();
+            kb.setContent(chunkText);
+            kb.setEmbedding(embeddingService.serialize(vec));
+            kb.setSourceFile(filename);
+            kb.setSourceHash(sha256);
+            kb.setChunkIndex(i);
+            knowledgeBaseMapper.insert(kb);
+
+            // Cache the embedding
+            vectorCacheService.put(kb.getId(), vec);
+            chunkIds.add(kb.getId());
+            successCount++;
+        }
+
+        // Store hash mapping for future dedup
+        if (!chunkIds.isEmpty()) {
+            vectorCacheService.putHashMapping(sha256, chunkIds);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("fileName", filename);
+        result.put("totalChunks", chunks.size());
+        result.put("successCount", successCount);
+        result.put("failedCount", errors.size());
+        result.put("errors", errors);
+        return Result.success(result);
     }
 
     // ===== 留言管理 =====

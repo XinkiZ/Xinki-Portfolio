@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { sendMessage as apiSend, getChatHistory, clearChatHistory } from "@/api/ai";
+import { sendMessageStream, getChatHistory, clearChatHistory } from "@/api/ai";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,21 +12,44 @@ export const useChatStore = defineStore("chat", () => {
   const sessionId = ref(localStorage.getItem("ai_session") || "");
   const messages = ref<Message[]>([]);
   const loading = ref(false);
+  /** Streaming partial content (shown while assistant is typing) */
+  const streamingContent = ref("");
 
   function toggle() { isOpen.value = !isOpen.value; }
 
   async function send(msg: string) {
-    if (!msg.trim()) return;
+    if (!msg.trim() || loading.value) return;
+
     messages.value.push({ role: "user", content: msg });
     loading.value = true;
-    try {
-      const res: any = await apiSend({ sessionId: sessionId.value, message: msg });
-      sessionId.value = res.data.sessionId;
-      localStorage.setItem("ai_session", sessionId.value);
-      messages.value.push({ role: "assistant", content: res.data.content });
-    } catch (e) {
-      messages.value.push({ role: "assistant", content: "抱歉，出了点问题..." });
-    } finally { loading.value = false; }
+    streamingContent.value = "";
+
+    // Push a placeholder for the assistant message
+    messages.value.push({ role: "assistant", content: "" });
+    const assistantIndex = messages.value.length - 1;
+
+    sendMessageStream(
+      { sessionId: sessionId.value, message: msg },
+      // onChunk
+      (token: string) => {
+        streamingContent.value += token;
+        messages.value[assistantIndex].content = streamingContent.value;
+      },
+      // onDone
+      (newSessionId: string) => {
+        sessionId.value = newSessionId;
+        localStorage.setItem("ai_session", newSessionId);
+        loading.value = false;
+        streamingContent.value = "";
+      },
+      // onError
+      (errMsg: string) => {
+        messages.value[assistantIndex].content = "抱歉，出了点问题...";
+        loading.value = false;
+        streamingContent.value = "";
+        console.error("Chat stream error:", errMsg);
+      }
+    );
   }
 
   async function loadHistory() {
@@ -44,5 +67,5 @@ export const useChatStore = defineStore("chat", () => {
     localStorage.removeItem("ai_session");
   }
 
-  return { isOpen, sessionId, messages, loading, toggle, send, loadHistory, clear };
+  return { isOpen, sessionId, messages, loading, streamingContent, toggle, send, loadHistory, clear };
 });

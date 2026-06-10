@@ -5,8 +5,10 @@ import com.xinki.portfolio.dto.ChatRequestDTO;
 import com.xinki.portfolio.service.AIChatService;
 import com.xinki.portfolio.service.AIContentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/ai/chat")
@@ -16,9 +18,16 @@ public class AIChatController {
     private final AIChatService aiChatService;
     private final AIContentService aiContentService;
 
+    /** 非流式（兼容旧版） */
     @PostMapping
     public Result<?> chat(@RequestBody ChatRequestDTO request) {
         return Result.success(aiChatService.chat(request.getSessionId(), request.getMessage()));
+    }
+
+    /** 流式 SSE */
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@RequestBody ChatRequestDTO request) {
+        return aiChatService.chatStream(request.getSessionId(), request.getMessage());
     }
 
     @GetMapping("/{sessionId}")

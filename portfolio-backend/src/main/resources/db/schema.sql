@@ -55,13 +55,17 @@ CREATE TABLE IF NOT EXISTS timeline_event (
     sort_order INT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 注意：升级 RAG 后需执行 DROP TABLE IF EXISTS knowledge_base; 然后重新执行此 CREATE
 CREATE TABLE IF NOT EXISTS knowledge_base (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    question TEXT NOT NULL,
-    answer TEXT NOT NULL,
-    embedding TEXT COMMENT 'JSON array of vector values',
+    content TEXT NOT NULL COMMENT '文本片段',
+    embedding TEXT COMMENT '1024维向量 JSON 数组',
+    source_file VARCHAR(255) COMMENT '来源文件名',
+    source_hash VARCHAR(64) COMMENT '文件 SHA-256 去重依据',
+    chunk_index INT DEFAULT 0 COMMENT '在源文件中的序号',
     category VARCHAR(50),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_source_hash (source_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS chat_history (

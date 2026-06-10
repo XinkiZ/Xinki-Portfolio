@@ -3,7 +3,7 @@
     <div class="container"><div class="admin-layout">
       <AdminSidebar />
       <main class="admin-main">
-        <div class="page-header"><h1>作品管理</h1><button class="btn-primary" @click="openCreate">+ 新增作品</button></div>
+        <div class="page-header"><h1>作品管理</h1><button class="btn-primary" @click="openCreate">+ 新增作品</button><button class="btn-ghost" @click="handleReindex" style="margin-left:8px">重建全部索引</button></div>
         <table class="data-table">
           <thead><tr><th>ID</th><th>封面</th><th>标题</th><th>标签</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
@@ -76,7 +76,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { getAdminProjects, createProject, updateProject, deleteProject } from "@/api/admin";
+import { getAdminProjects, createProject, updateProject, deleteProject, reindexProjects } from "@/api/admin";
 import { uploadFile } from "@/api/upload";
 import { generateProjectContent } from "@/api/ai";
 import AdminSidebar from "./AdminSidebar.vue";
@@ -140,6 +140,7 @@ async function save() {
   } catch (e) {}
 }
 async function handleDelete(id: number) { if (confirm("确定删除？")) { await deleteProject(id); load(); } }
+async function handleReindex() { if (confirm("重建所有内容（作品/技能/经历）的 RAG 索引？")) { try { const r: any = await reindexProjects(); const d = r.data; alert(`作品: ${d.project[0]}个 成功${d.project[1]} 失败${d.project[2]}\n技能: ${d.skill[0]}个 成功${d.skill[1]} 失败${d.skill[2]}\n经历: ${d.timeline[0]}个 成功${d.timeline[1]} 失败${d.timeline[2]}`); } catch(e) { alert("重建失败"); } } }
 onMounted(load);
 </script>
 
