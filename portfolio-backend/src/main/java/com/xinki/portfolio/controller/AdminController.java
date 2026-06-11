@@ -10,12 +10,14 @@ import com.xinki.portfolio.service.DocumentChunkService;
 import com.xinki.portfolio.service.EmbeddingService;
 import com.xinki.portfolio.service.ContentIndexService;
 import com.xinki.portfolio.service.VectorCacheService;
-import com.xinki.portfolio.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,17 +38,41 @@ public class AdminController {
     private final EmbeddingService embeddingService;
     private final ContentIndexService contentIndexService;
     private final VectorCacheService vectorCacheService;
-    private final JwtUtil jwtUtil;
+    private final StringRedisTemplate redisTemplate;
+    private final com.xinki.portfolio.util.JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    // ===== 登录 =====
+    private static final int LOGIN_MAX_ATTEMPTS = 5;
+    private static final Duration LOGIN_LOCK_DURATION = Duration.ofMinutes(15);
+    private static final String LOGIN_FAIL_PREFIX = "login:fail:";
+
+    // ===== 登录（含暴力破解防护） =====
     @PostMapping("/login")
-    public Result<?> login(@RequestBody LoginDTO loginDTO) {
+    public Result<?> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        String failKey = LOGIN_FAIL_PREFIX + clientIp;
+
+        // 检查是否已被锁定
+        String failCountStr = redisTemplate.opsForValue().get(failKey);
+        int failCount = failCountStr != null ? Integer.parseInt(failCountStr) : 0;
+        if (failCount >= LOGIN_MAX_ATTEMPTS) {
+            Long ttl = redisTemplate.getExpire(failKey);
+            long minutes = (ttl != null && ttl > 0) ? ttl / 60 : 15;
+            return Result.error(429, "登录尝试次数过多，请 " + minutes + " 分钟后再试");
+        }
+
         User user = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getUsername, loginDTO.getUsername()));
         if (user == null || !passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            return Result.error(401, "用户名或密码错误");
+            // 记录失败次数
+            failCount++;
+            redisTemplate.opsForValue().set(failKey, String.valueOf(failCount), LOGIN_LOCK_DURATION);
+            int remaining = LOGIN_MAX_ATTEMPTS - failCount;
+            return Result.error(401, "用户名或密码错误" + (remaining > 0 ? "，还剩 " + remaining + " 次尝试" : "，账号已锁定"));
         }
+
+        // 登录成功，清除失败记录
+        redisTemplate.delete(failKey);
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
         Map<String, String> data = new HashMap<>();
         data.put("token", token);
@@ -54,11 +80,10 @@ public class AdminController {
         return Result.success(data);
     }
 
-    // ===== 个人信息 =====
+    // ===== 个人信息（认证由 JwtInterceptor 处理） =====
     @GetMapping("/profile")
-    public Result<?> profile(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserId(token);
+    public Result<?> profile(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         User user = userMapper.selectById(userId);
         if (user == null) {
             return Result.error(404, "用户不存在");
@@ -68,10 +93,9 @@ public class AdminController {
     }
 
     @PutMapping("/profile")
-    public Result<?> updateProfile(@RequestHeader("Authorization") String authHeader,
+    public Result<?> updateProfile(HttpServletRequest request,
                                    @RequestBody Map<String, String> body) {
-        String token = authHeader.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserId(token);
+        Long userId = (Long) request.getAttribute("userId");
         User user = userMapper.selectById(userId);
         if (user == null) {
             return Result.error(404, "用户不存在");
@@ -85,10 +109,9 @@ public class AdminController {
     }
 
     @PutMapping("/profile/password")
-    public Result<?> updatePassword(@RequestHeader("Authorization") String authHeader,
+    public Result<?> updatePassword(HttpServletRequest request,
                                     @RequestBody Map<String, String> body) {
-        String token = authHeader.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserId(token);
+        Long userId = (Long) request.getAttribute("userId");
         User user = userMapper.selectById(userId);
         if (user == null) {
             return Result.error(404, "用户不存在");
@@ -114,35 +137,36 @@ public class AdminController {
         data.put("skillCount", skillMapper.selectCount(null));
         data.put("messageCount", contactMessageMapper.selectCount(null));
         data.put("knowledgeCount", knowledgeBaseMapper.selectCount(null));
-        data.put("unreadMessages", contactMessageMapper.selectCount(
-                new LambdaQueryWrapper<ContactMessage>().eq(ContactMessage::getIsRead, 0)));
         return Result.success(data);
     }
 
-    // ===== 作品管理 =====
+    // ===== 作品管理 CRUD（ContentIndexService 联动已发布→索引，未发布→删除索引） =====
     @GetMapping("/projects")
     public Result<?> projects(@RequestParam(defaultValue = "1") Integer page,
-                              @RequestParam(defaultValue = "10") Integer pageSize) {
-        Page<Project> result = projectMapper.selectPage(
+                               @RequestParam(defaultValue = "10") Integer pageSize) {
+        return Result.success(projectMapper.selectPage(
                 new Page<>(page, pageSize),
-                new LambdaQueryWrapper<Project>().orderByDesc(Project::getCreatedAt));
-        return Result.success(result);
+                new LambdaQueryWrapper<Project>().orderByDesc(Project::getSortOrder)));
     }
 
     @PostMapping("/projects")
     public Result<?> createProject(@RequestBody Project project) {
         projectMapper.insert(project);
-        contentIndexService.indexProject(project);
-        return Result.success("创建成功");
+        if (project.getIsPublished() != null && project.getIsPublished() == 1) {
+            contentIndexService.indexProject(project);
+        }
+        return Result.success("添加成功");
     }
 
     @PutMapping("/projects/{id}")
     public Result<?> updateProject(@PathVariable Long id, @RequestBody Project project) {
         project.setId(id);
         projectMapper.updateById(project);
-        // Re-index (will remove old + create new, or remove if unpublished)
-        Project updated = projectMapper.selectById(id);
-        if (updated != null) contentIndexService.indexProject(updated);
+        if (project.getIsPublished() != null && project.getIsPublished() == 1) {
+            contentIndexService.indexProject(project);
+        } else {
+            contentIndexService.removeProjectIndex(id);
+        }
         return Result.success("更新成功");
     }
 
@@ -153,17 +177,18 @@ public class AdminController {
         return Result.success("删除成功");
     }
 
-    /** 重建所有已发布作品的 RAG 索引（批量） */
     @PostMapping("/projects/reindex")
     public Result<?> reindexProjects() {
-        Map<String, int[]> result = contentIndexService.rebuildAll();
-        return Result.success(result);
+        contentIndexService.rebuildAll();
+        return Result.success("全量重建索引已完成");
     }
 
-    // ===== 技能管理 =====
+    // ===== 技能管理 CRUD =====
     @GetMapping("/skills")
-    public Result<?> skills() {
-        return Result.success(skillMapper.selectList(
+    public Result<?> skills(@RequestParam(defaultValue = "1") Integer page,
+                             @RequestParam(defaultValue = "10") Integer pageSize) {
+        return Result.success(skillMapper.selectPage(
+                new Page<>(page, pageSize),
                 new LambdaQueryWrapper<Skill>().orderByAsc(Skill::getSortOrder)));
     }
 
@@ -171,15 +196,14 @@ public class AdminController {
     public Result<?> createSkill(@RequestBody Skill skill) {
         skillMapper.insert(skill);
         contentIndexService.indexSkill(skill);
-        return Result.success("创建成功");
+        return Result.success("添加成功");
     }
 
     @PutMapping("/skills/{id}")
     public Result<?> updateSkill(@PathVariable Long id, @RequestBody Skill skill) {
         skill.setId(id);
         skillMapper.updateById(skill);
-        Skill updated = skillMapper.selectById(id);
-        if (updated != null) contentIndexService.indexSkill(updated);
+        contentIndexService.indexSkill(skill);
         return Result.success("更新成功");
     }
 
@@ -190,26 +214,27 @@ public class AdminController {
         return Result.success("删除成功");
     }
 
-    // ===== 时间线管理 =====
+    // ===== 时间线管理 CRUD =====
     @GetMapping("/timeline")
-    public Result<?> timeline() {
-        return Result.success(timelineEventMapper.selectList(
-                new LambdaQueryWrapper<TimelineEvent>().orderByDesc(TimelineEvent::getStartDate)));
+    public Result<?> timeline(@RequestParam(defaultValue = "1") Integer page,
+                               @RequestParam(defaultValue = "10") Integer pageSize) {
+        return Result.success(timelineEventMapper.selectPage(
+                new Page<>(page, pageSize),
+                new LambdaQueryWrapper<TimelineEvent>().orderByDesc(TimelineEvent::getSortOrder)));
     }
 
     @PostMapping("/timeline")
     public Result<?> createTimeline(@RequestBody TimelineEvent event) {
         timelineEventMapper.insert(event);
         contentIndexService.indexTimeline(event);
-        return Result.success("创建成功");
+        return Result.success("添加成功");
     }
 
     @PutMapping("/timeline/{id}")
     public Result<?> updateTimeline(@PathVariable Long id, @RequestBody TimelineEvent event) {
         event.setId(id);
         timelineEventMapper.updateById(event);
-        TimelineEvent updated = timelineEventMapper.selectById(id);
-        if (updated != null) contentIndexService.indexTimeline(updated);
+        contentIndexService.indexTimeline(event);
         return Result.success("更新成功");
     }
 
@@ -220,7 +245,7 @@ public class AdminController {
         return Result.success("删除成功");
     }
 
-    // ===== AI 知识库管理 =====
+    // ===== 知识库管理 =====
     @GetMapping("/knowledge")
     public Result<?> knowledge(@RequestParam(defaultValue = "1") Integer page,
                                 @RequestParam(defaultValue = "10") Integer pageSize) {
@@ -259,20 +284,15 @@ public class AdminController {
     /** Import document: parse → chunk → embed → store. */
     @PostMapping("/knowledge/import")
     public Result<?> importKnowledge(@RequestParam("file") MultipartFile file) {
-        // Validate
         if (file == null || file.isEmpty()) {
             return Result.error(400, "请选择文件");
         }
         String filename = file.getOriginalFilename();
 
-        // Dedup: compute SHA-256
         String sha256 = documentChunkService.computeHash(file);
-        List<Long> existingIds = vectorCacheService.getHashMapping(sha256);
-        // Also check DB directly
         List<KnowledgeBase> existingDB = knowledgeBaseMapper.selectList(
                 new LambdaQueryWrapper<KnowledgeBase>().eq(KnowledgeBase::getSourceHash, sha256));
         if (!existingDB.isEmpty()) {
-            // Delete old chunks for this file
             for (KnowledgeBase kb : existingDB) {
                 vectorCacheService.remove(kb.getId());
             }
@@ -281,13 +301,11 @@ public class AdminController {
             vectorCacheService.removeHashMapping(sha256);
         }
 
-        // Chunk
         List<String> chunks = documentChunkService.chunkFile(file);
         if (chunks.isEmpty()) {
             return Result.error(400, "未能从文件中提取到有效文本（可能为空、扫描版 PDF 或不支持的格式）");
         }
 
-        // Process chunks
         int successCount = 0;
         List<Map<String, Object>> errors = new ArrayList<>();
         List<Long> chunkIds = new ArrayList<>();
@@ -308,13 +326,11 @@ public class AdminController {
             kb.setChunkIndex(i);
             knowledgeBaseMapper.insert(kb);
 
-            // Cache the embedding
             vectorCacheService.put(kb.getId(), vec);
             chunkIds.add(kb.getId());
             successCount++;
         }
 
-        // Store hash mapping for future dedup
         if (!chunkIds.isEmpty()) {
             vectorCacheService.putHashMapping(sha256, chunkIds);
         }
@@ -344,5 +360,20 @@ public class AdminController {
         msg.setIsRead(1);
         contactMessageMapper.updateById(msg);
         return Result.success("已标记已读");
+    }
+
+    // ===== 工具方法 =====
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

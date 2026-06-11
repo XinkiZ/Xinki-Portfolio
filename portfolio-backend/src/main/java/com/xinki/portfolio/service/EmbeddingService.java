@@ -48,7 +48,14 @@ public class EmbeddingService {
             String responseBody = response.body();
             JsonNode root = objectMapper.readTree(responseBody);
 
-            // Check for API-level errors first
+            // Check for API-level errors first (DashScope nests errors under "error" key)
+            if (root.has("error")) {
+                JsonNode err = root.path("error");
+                String errCode = err.path("code").asText("");
+                String errMsg = err.path("message").asText("");
+                log.error("Embedding API error (HTTP {}): code={}, message={}", statusCode, errCode, errMsg);
+                return null;
+            }
             if (root.has("code") && !"200".equals(root.path("code").asText())) {
                 String apiMsg = root.path("message").asText("");
                 log.error("Embedding API error (HTTP {}): code={}, message={}", statusCode,

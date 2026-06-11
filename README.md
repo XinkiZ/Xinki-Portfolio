@@ -70,6 +70,51 @@ npm run dev
 # → http://localhost:5173，/api 自动 proxy 到 :8080
 ```
 
+
+## Docker 部署（阿里云 ECS）
+
+### 一键部署
+
+```bash
+# 1. 上传项目到 ECS
+scp -r Xinki-Portfolio/ root@<ECS公网IP>:/opt/
+
+# 2. 配置环境变量
+cd /opt/Xinki-Portfolio
+cp .env.example .env
+vim .env  # 填入真实的 API Key、OSS 凭据
+
+# 3. 一键部署
+chmod +x deploy.sh
+./deploy.sh
+```
+
+部署完成后访问 `http://<ECS公网IP>`。默认管理员：`admin` / `admin123`。
+
+### 架构
+
+```
+Browser (80/443) → Nginx → /api/* → Backend (8080) → MySQL (3306)
+                              ↓                      → Redis (6379)
+                         / → Static Files (Vue SPA)
+```
+
+### 运维命令
+
+```bash
+docker compose ps                  # 服务状态
+docker compose logs -f backend     # 后端日志
+docker compose up -d --build       # 更新代码后重建
+docker compose down                # 停止服务
+```
+
+### 前置条件
+
+1. ECS 安全组放行 80、443 端口
+2. 域名 DNS 解析到 ECS 公网 IP（可选，用于 SSL）
+3. 阿里云 SSL 证书下载后放置到 `deploy/nginx/ssl/`
+
+详细部署文档见 `AGENTS.md`。
 ## API 概览
 
 统一响应格式：`{ code: Integer, message: String, data: Object }`

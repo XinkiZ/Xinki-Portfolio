@@ -1,5 +1,3 @@
-CREATE DATABASE IF NOT EXISTS xinki_portfolio DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 USE xinki_portfolio;
 
 CREATE TABLE IF NOT EXISTS user (
@@ -55,7 +53,6 @@ CREATE TABLE IF NOT EXISTS timeline_event (
     sort_order INT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 注意：升级 RAG 后需执行 DROP TABLE IF EXISTS knowledge_base; 然后重新执行此 CREATE
 CREATE TABLE IF NOT EXISTS knowledge_base (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     content TEXT NOT NULL COMMENT '文本片段',
@@ -76,6 +73,5 @@ CREATE TABLE IF NOT EXISTS chat_history (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_session (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- 默认管理员（用户名 admin，密码 admin123，首次登录后请立即修改）
 INSERT INTO user (username, password) VALUES ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy') ON DUPLICATE KEY UPDATE username=username;

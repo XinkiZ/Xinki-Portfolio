@@ -1,0 +1,29 @@
+# Maven
+portfolio-backend/target/
+.m2/
+
+# Node
+portfolio-frontend/node_modules/
+portfolio-frontend/dist/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed for build)
+docs/
+
+# Git
+.git/
+.gitignore
+
+# Env (security — never bake into image)
+.env
+.env.local
+
+# Logs
+*.log

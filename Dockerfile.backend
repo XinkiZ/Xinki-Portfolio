@@ -1,0 +1,19 @@
+# Stage 1: Build with Maven
+FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+WORKDIR /app
+COPY deploy/settings-docker.xml /root/.m2/settings.xml
+COPY portfolio-backend/pom.xml ./
+RUN mvn dependency:go-offline -B -q
+COPY portfolio-backend/src ./src
+RUN mvn package -DskipTests -B -q
+
+# Stage 2: Run with JRE
+FROM eclipse-temurin:17-jre-alpine
+RUN apk add --no-cache tzdata curl && \
+    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://localhost:8080/api/home || exit 1
+ENTRYPOINT ["java", "-Xms256m", "-Xmx1024m", "-jar", "app.jar"]

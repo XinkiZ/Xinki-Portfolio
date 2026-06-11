@@ -87,7 +87,7 @@ const avatarInput = ref<HTMLInputElement | null>(null);
 onMounted(async () => {
   try {
     const res: any = await getProfile();
-    if (res.data) {
+    if (res) {
       profile.username = res.data.username || "";
       profile.avatar = res.data.avatar || "";
       profile.intro = res.data.intro || "";
