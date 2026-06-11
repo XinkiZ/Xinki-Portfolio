@@ -16,7 +16,7 @@
             @dragover.prevent="isDragging = true"
             @dragleave="isDragging = false"
             @drop.prevent="handleDrop"
-            @click="$refs.fileInput.click()"
+            @click="triggerFileInput"
           >
             <div class="upload-icon">📄</div>
             <p v-if="!analyzing">拖拽文件到此处，或点击选择文件</p>
@@ -272,6 +272,8 @@ function addSkill() {
 function removeSkill(index: number) {
   editableSkills.value.splice(index, 1);
 }
+
+function triggerFileInput() { fileInput.value?.click(); }
 
 function reset() {
   result.value = null;
