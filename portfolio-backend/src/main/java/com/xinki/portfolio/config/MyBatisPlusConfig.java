@@ -17,7 +17,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MyBatisPlusConfig {
 
-    /** Fix MyBatis-Plus 3.5.5 compatibility with Spring Boot 3.2+: remove invalid factoryBeanObjectType. */
+    /** Fix MyBatis-Plus 3.5.5 compatibility with Spring Boot 3.2+: remove invalid factoryBeanObjectType.
+     * Must run BEFORE DatabaseInitializationDependencyConfigurer via PriorityOrdered. */
     @Bean
     public static BeanDefinitionRegistryPostProcessor mybatisMapperFixer() {
         return new BeanDefinitionRegistryPostProcessor() {
@@ -26,7 +27,14 @@ public class MyBatisPlusConfig {
                 for (String name : registry.getBeanDefinitionNames()) {
                     BeanDefinition bd = registry.getBeanDefinition(name);
                     if (bd.hasAttribute("factoryBeanObjectType")) {
-                        bd.removeAttribute("factoryBeanObjectType");
+                        Object val = bd.getAttribute("factoryBeanObjectType");
+                        if (val instanceof String) {
+                            try {
+                                bd.setAttribute("factoryBeanObjectType", Class.forName((String) val));
+                            } catch (ClassNotFoundException e) {
+                                bd.removeAttribute("factoryBeanObjectType");
+                            }
+                        }
                     }
                 }
             }
