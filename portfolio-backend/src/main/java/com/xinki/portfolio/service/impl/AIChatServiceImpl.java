@@ -197,11 +197,7 @@ public class AIChatServiceImpl implements AIChatService {
         // Generate query embedding via Spring AI EmbeddingModel
         float[] queryVec;
         try {
-            List<Double> vecDouble = embeddingModel.embed(query);
-            queryVec = new float[vecDouble.size()];
-            for (int i = 0; i < vecDouble.size(); i++) {
-                queryVec[i] = vecDouble.get(i).floatValue();
-            }
+            queryVec = embeddingModel.embed(query);
         } catch (Exception e) {
             log.warn("Embedding failed, falling back to keyword search", e);
             return fallbackKeywordSearch(query, all);
