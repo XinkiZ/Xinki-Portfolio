@@ -5,6 +5,7 @@ import com.xinki.portfolio.entity.*;
 import com.xinki.portfolio.mapper.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
