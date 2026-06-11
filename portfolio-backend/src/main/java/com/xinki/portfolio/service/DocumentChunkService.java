@@ -3,7 +3,6 @@ package com.xinki.portfolio.service;
 import com.xinki.portfolio.config.RagConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
@@ -93,7 +92,7 @@ public class DocumentChunkService {
     }
 
     private String extractPdfText(MultipartFile file) throws Exception {
-        try (PDDocument doc = Loader.loadPDF(file.getBytes())) {
+        try (PDDocument doc = PDDocument.load(file.getBytes())) {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setSortByPosition(true);
             return stripper.getText(doc);

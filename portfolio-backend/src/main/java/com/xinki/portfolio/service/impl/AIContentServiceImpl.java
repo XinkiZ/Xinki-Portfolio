@@ -5,7 +5,6 @@ import com.xinki.portfolio.dto.GenerateContentResponse;
 import com.xinki.portfolio.service.AIContentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.ai.chat.client.ChatClient;
@@ -50,7 +49,7 @@ public class AIContentServiceImpl implements AIContentService {
             if (filename == null) return "";
             String lower = filename.toLowerCase();
             if (lower.endsWith(".pdf")) {
-                try (PDDocument doc = Loader.loadPDF(fileBytes)) {
+                try (PDDocument doc = PDDocument.load(new java.io.ByteArrayInputStream(fileBytes))) {
                     PDFTextStripper stripper = new PDFTextStripper();
                     stripper.setSortByPosition(true);
                     return stripper.getText(doc);

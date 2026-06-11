@@ -8,7 +8,6 @@ import com.xinki.portfolio.dto.DocumentAnalysisDTO.ExtractedSkill;
 import com.xinki.portfolio.service.AdminAIService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.ai.chat.client.ChatClient;
@@ -75,7 +74,7 @@ public class AdminAIServiceImpl implements AdminAIService {
             if (filename == null) return "";
             String lower = filename.toLowerCase();
             if (lower.endsWith(".pdf")) {
-                try (PDDocument doc = Loader.loadPDF(bytes)) {
+                try (PDDocument doc = PDDocument.load(new java.io.ByteArrayInputStream(bytes))) {
                     PDFTextStripper stripper = new PDFTextStripper();
                     stripper.setSortByPosition(true);
                     return stripper.getText(doc);
