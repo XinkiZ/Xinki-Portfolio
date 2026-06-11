@@ -33,7 +33,7 @@ public class EmbeddingService {
         try {
             Map<String, Object> body = Map.of(
                     "model", aiConfig.getEmbeddingModel(),
-                    "input", text
+                    "input", Collections.singletonList(text)
             );
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -44,7 +44,18 @@ public class EmbeddingService {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode root = objectMapper.readTree(response.body());
+            int statusCode = response.statusCode();
+            String responseBody = response.body();
+            JsonNode root = objectMapper.readTree(responseBody);
+
+            // Check for API-level errors first
+            if (root.has("code") && !"200".equals(root.path("code").asText())) {
+                String apiMsg = root.path("message").asText("");
+                log.error("Embedding API error (HTTP {}): code={}, message={}", statusCode,
+                        root.path("code").asText(), apiMsg);
+                return null;
+            }
+
             JsonNode data = root.path("data");
             if (data.isArray() && data.size() > 0) {
                 JsonNode vec = data.get(0).path("embedding");
@@ -54,7 +65,9 @@ public class EmbeddingService {
                 }
                 return result;
             }
-            log.warn("Empty embedding result for text: {}", text.substring(0, Math.min(50, text.length())));
+            log.warn("Empty embedding result (HTTP {}) for text \"{}\": {}",
+                    statusCode, text.substring(0, Math.min(50, text.length())),
+                    responseBody.length() > 300 ? responseBody.substring(0, 300) : responseBody);
             return null;
         } catch (Exception e) {
             log.error("Embedding generation failed: {}", e.getMessage());
