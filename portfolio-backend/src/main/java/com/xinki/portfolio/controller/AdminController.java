@@ -284,13 +284,7 @@ public class AdminController {
 
 
     private float[] embed(String text) {
-        java.util.List<Double> vecDouble = embeddingModel.embed(text);
-        if (vecDouble == null || vecDouble.isEmpty()) return null;
-        float[] vec = new float[vecDouble.size()];
-        for (int i = 0; i < vecDouble.size(); i++) {
-            vec[i] = vecDouble.get(i).floatValue();
-        }
-        return vec;
+        return embeddingModel.embed(text);
     }
     private String serializeVec(float[] vec) {
         if (vec == null) return null;
