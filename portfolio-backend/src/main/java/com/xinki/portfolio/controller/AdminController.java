@@ -282,12 +282,12 @@ public class AdminController {
 
     private String serializeVec(float[] vec) {
         if (vec == null) return null;
-        StringBuilder sb = new StringBuilder(\"[");
+        StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < vec.length; i++) {
-            if (i > 0) sb.append(\",\");
+            if (i > 0) sb.append(",");
             sb.append(vec[i]);
         }
-        sb.append(\"]\");
+        sb.append("]");
         return sb.toString();
     }
 
