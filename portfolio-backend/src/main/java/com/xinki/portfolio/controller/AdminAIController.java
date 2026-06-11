@@ -17,7 +17,7 @@ public class AdminAIController {
     @PostMapping("/analyze-document")
     public Result<DocumentAnalysisDTO> analyzeDocument(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
-            return Result.error(400, "鏂囦欢涓嶈兘涓虹┖");
+            return Result.error(400, "文件不能为空");
         }
         DocumentAnalysisDTO result = adminAIService.analyzeDocument(file);
         return Result.success(result);

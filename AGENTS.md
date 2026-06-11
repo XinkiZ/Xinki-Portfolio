@@ -256,6 +256,20 @@ ode_modules/、	arget/、.idea/、.m2/
 1. 无 BOM：ReadAllBytes 检查前 3 字节不是 EF BB BF
 2. 中文未损坏：Get-Content -Encoding UTF8 | Select-String 已知中文关键词
 
+
+### 前端 MyBatis-Plus Page 响应数据提取
+
+后端分页接口返回 `Result<Page<T>>`，Page 对象结构为 `{ records: [...], total: N, current: N }`。
+
+前端必须取 `r.data.records` 而非 `r.data`：
+
+| 正确 | 错误 |
+|------|------|
+| `list.value = r.data.records \|\| []` | `list.value = r.data \|\| []` |
+
+错误写法会导致 `v-for` 迭代 Page 对象属性（records/total/current 等），表格渲染异常，表现为"无法添加/删除"。
+
+
 ### Java 字符串转义易错点（血的教训）
 
 修改 Java 文件中的字符串（如 AI prompt）时，双引号转义极易出错：

@@ -33,7 +33,7 @@ import AdminSidebar from "./AdminSidebar.vue";
 const list = ref<any[]>([]);
 const showForm = ref(false); const editingId = ref<number | null>(null);
 const form = ref({ title: "", description: "", type: "work", startDate: "", endDate: "", sortOrder: 0 });
-async function load() { try { const r: any = await getAdminTimeline(); list.value = r.data || []; } catch (e) {} }
+async function load() { try { const r: any = await getAdminTimeline(); list.value = r.data.records || []; } catch (e) {} }
 function openCreate() { editingId.value = null; form.value = { title: "", description: "", type: "work", startDate: "", endDate: "", sortOrder: 0 }; showForm.value = true; }
 function openEdit(item: any) { editingId.value = item.id; form.value = { ...item }; showForm.value = true; }
 async function save() { try { if (editingId.value) await updateTimeline(editingId.value, form.value); else await createTimeline(form.value); showForm.value = false; load(); } catch (e) {} }

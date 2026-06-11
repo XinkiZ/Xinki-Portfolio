@@ -51,7 +51,7 @@ const showForm = ref(false); const editingId = ref<number | null>(null);
 const uploading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const form = ref({ name: "", category: "", level: 50, sortOrder: 0, icon: "" });
-async function load() { try { const r: any = await getAdminSkills(); list.value = r.data || []; } catch (e) {} }
+async function load() { try { const r: any = await getAdminSkills(); list.value = r.data.records || []; } catch (e) {} }
 function openCreate() { editingId.value = null; form.value = { name: "", category: "", level: 50, sortOrder: 0, icon: "" }; showForm.value = true; }
 function openEdit(item: any) { editingId.value = item.id; form.value = { ...item }; showForm.value = true; }
 async function handleIconUpload(e: Event) {
