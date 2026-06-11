@@ -10,6 +10,7 @@ import com.xinki.portfolio.service.DocumentChunkService;
 import com.xinki.portfolio.service.ContentIndexService;
 import com.xinki.portfolio.service.VectorCacheService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,7 @@ public class AdminController {
     private final DocumentChunkService documentChunkService;
     private final ContentIndexService contentIndexService;
     private final VectorCacheService vectorCacheService;
+    private final EmbeddingModel embeddingModel;
     private final StringRedisTemplate redisTemplate;
     private final com.xinki.portfolio.util.JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -280,6 +282,16 @@ public class AdminController {
     }
 
 
+
+    private float[] embed(String text) {
+        java.util.List<Double> vecDouble = embeddingModel.embed(text);
+        if (vecDouble == null || vecDouble.isEmpty()) return null;
+        float[] vec = new float[vecDouble.size()];
+        for (int i = 0; i < vecDouble.size(); i++) {
+            vec[i] = vecDouble.get(i).floatValue();
+        }
+        return vec;
+    }
     private String serializeVec(float[] vec) {
         if (vec == null) return null;
         StringBuilder sb = new StringBuilder("[");
@@ -335,7 +347,8 @@ public class AdminController {
 
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
-            float[] vec = if (vec == null) {
+            float[] vec = embed(chunkText);
+            if (vec == null) {
                 errors.add(Map.of("chunkIndex", i, "reason", "Embedding 生成失败，已跳过"));
                 continue;
             }
