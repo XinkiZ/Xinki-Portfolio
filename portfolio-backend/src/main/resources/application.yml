@@ -21,6 +21,17 @@ spring:
         max-idle: 8
         min-idle: 0
     timeout: 3000ms
+  ai:
+    dashscope:
+      api-key: ${BAILIAN_API_KEY}
+      chat:
+        options:
+          model: qwen-plus
+          temperature: 0.3
+          max-tokens: 4096
+      embedding:
+        options:
+          model: text-embedding-v3
 
 mybatis-plus:
   configuration:
@@ -28,11 +39,6 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
-
-bailian:
-  api-key: ${BAILIAN_API_KEY}
-  model: qwen-plus
-  embedding-model: text-embedding-v3
 
 jwt:
   secret: ${JWT_SECRET:xinki-portfolio-jwt-secret-key-2026}

@@ -22,7 +22,7 @@ public class ContentIndexService {
     private final SkillMapper skillMapper;
     private final TimelineEventMapper timelineEventMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
-    private final EmbeddingService embeddingService;
+    private final EmbeddingModel embeddingModel;
     private final VectorCacheService vectorCacheService;
 
     // ==================== Project ====================
@@ -66,16 +66,37 @@ public class ContentIndexService {
 
     // ==================== Internal ====================
 
+
+    private float[] embed(String text) {
+        java.util.List<Double> vecDouble = embeddingModel.embed(text);
+        if (vecDouble == null || vecDouble.isEmpty()) return null;
+        float[] vec = new float[vecDouble.size()];
+        for (int i = 0; i < vecDouble.size(); i++) {
+            vec[i] = vecDouble.get(i).floatValue();
+        }
+        return vec;
+    }
+
+    private String serializeVec(float[] vec) {
+        if (vec == null) return null;
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < vec.length; i++) {
+            if (i > 0) sb.append(",");
+            sb.append(vec[i]);
+        }
+        sb.append("]");
+        return sb.toString();
+    }
     private void indexContent(String hash, String content, String sourceFile, String category) {
         removeByHash(hash);
-        float[] vec = embeddingService.generateEmbedding(content);
+        float[] vec = embed(content);
         if (vec == null) {
             log.warn("Embedding failed for {}", hash);
             return;
         }
         KnowledgeBase kb = new KnowledgeBase();
         kb.setContent(content);
-        kb.setEmbedding(embeddingService.serialize(vec));
+        kb.setEmbedding(serializeVec(vec));
         kb.setSourceFile(sourceFile);
         kb.setSourceHash(hash);
         kb.setChunkIndex(0);

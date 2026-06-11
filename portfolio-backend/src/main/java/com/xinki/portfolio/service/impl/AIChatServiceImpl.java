@@ -1,9 +1,6 @@
 package com.xinki.portfolio.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xinki.portfolio.config.AIConfig;
 import com.xinki.portfolio.config.RagConfig;
 import com.xinki.portfolio.entity.ChatHistory;
 import com.xinki.portfolio.entity.KnowledgeBase;
@@ -14,22 +11,19 @@ import com.xinki.portfolio.mapper.KnowledgeBaseMapper;
 import com.xinki.portfolio.mapper.ProjectMapper;
 import com.xinki.portfolio.mapper.SkillMapper;
 import com.xinki.portfolio.service.AIChatService;
-import com.xinki.portfolio.service.EmbeddingService;
 import com.xinki.portfolio.service.VectorCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,19 +31,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AIChatServiceImpl implements AIChatService {
 
-    private final AIConfig aiConfig;
+    private final ChatClient.Builder chatClientBuilder;
+    private final EmbeddingModel embeddingModel;
     private final RagConfig ragConfig;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final ChatHistoryMapper chatHistoryMapper;
-    private final EmbeddingService embeddingService;
     private final ProjectMapper projectMapper;
     private final SkillMapper skillMapper;
     private final VectorCacheService vectorCacheService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final HttpClient httpClient = HttpClient.newHttpClient();
 
-    private static final String BAILIAN_URL =
-            "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
     private static final int HISTORY_LIMIT = 10;
 
     // ==================== 非流式 ====================
@@ -75,12 +65,29 @@ public class AIChatServiceImpl implements AIChatService {
         String catalog = buildCatalog();
         String context = mergeContext(ragContext, catalog);
 
-        // 4. Build messages: system + history + current user
-        List<Map<String, String>> messages = buildMessages(
-                buildSystemPrompt(context), history, message);
+        // 4. Build history messages for Spring AI
+        List<Message> historyMessages = new ArrayList<>();
+        for (ChatHistory h : history) {
+            if ("user".equals(h.getRole())) {
+                historyMessages.add(new UserMessage(h.getContent()));
+            } else {
+                historyMessages.add(new AssistantMessage(h.getContent()));
+            }
+        }
 
-        // 5. Call API
-        String reply = callOpenAI(messages);
+        // 5. Call Spring AI ChatClient
+        String reply;
+        try {
+            reply = chatClientBuilder.build().prompt()
+                    .system(buildSystemPrompt(context))
+                    .messages(historyMessages)
+                    .user(message)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.error("Chat API call failed", e);
+            reply = "抱歉，我暂时无法回答，请稍后再试。";
+        }
 
         // 6. Save assistant reply
         ChatHistory assistantMsg = new ChatHistory();
@@ -121,136 +128,64 @@ public class AIChatServiceImpl implements AIChatService {
         String context = mergeContext(ragContext, catalog);
         String systemPrompt = buildSystemPrompt(context);
 
+        // 4. Build history messages
+        List<Message> historyMessages = new ArrayList<>();
+        for (ChatHistory h : history) {
+            if ("user".equals(h.getRole())) {
+                historyMessages.add(new UserMessage(h.getContent()));
+            } else {
+                historyMessages.add(new AssistantMessage(h.getContent()));
+            }
+        }
+
         SseEmitter emitter = new SseEmitter(120_000L);
 
-        CompletableFuture.runAsync(() -> {
-            StringBuilder fullReply = new StringBuilder();
-            try {
-                // 4. Build messages: system + history + current user
-                List<Map<String, String>> messages = buildMessages(systemPrompt, history, message);
-
-                Map<String, Object> body = Map.of(
-                        "model", aiConfig.getModel(),
-                        "messages", messages,
-                        "temperature", 0.7,
-                        "max_tokens", 1024,
-                        "stream", true
-                );
-
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(BAILIAN_URL))
-                        .header("Content-Type", "application/json")
-                        .header("Authorization", "Bearer " + aiConfig.getApiKey())
-                        .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                        .build();
-
-                HttpResponse<java.io.InputStream> response =
-                        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (line.isEmpty() || !line.startsWith("data: ")) continue;
-                        String data = line.substring(6);
-                        if ("[DONE]".equals(data)) break;
-                        try {
-                            JsonNode chunk = objectMapper.readTree(data);
-                            JsonNode choices = chunk.path("choices");
-                            if (choices.isArray() && choices.size() > 0) {
-                                JsonNode delta = choices.get(0).path("delta");
-                                JsonNode contentNode = delta.path("content");
-                                if (!contentNode.isMissingNode() && !contentNode.asText().isEmpty()) {
-                                    String token = contentNode.asText();
-                                    fullReply.append(token);
-                                    emitter.send(SseEmitter.event()
-                                            .name("chunk")
-                                            .data(Map.of("type", "chunk", "content", token)));
-                                }
-                            }
-                        } catch (Exception ignored) {}
+        // 5. Stream via Spring AI ChatClient
+        StringBuilder fullReply = new StringBuilder();
+        chatClientBuilder.build().prompt()
+                .system(systemPrompt)
+                .messages(historyMessages)
+                .user(message)
+                .stream()
+                .content()
+                .doOnNext(chunk -> {
+                    fullReply.append(chunk);
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("chunk")
+                                .data(Map.of("type", "chunk", "content", chunk)));
+                    } catch (Exception ignored) {}
+                })
+                .doOnComplete(() -> {
+                    try {
+                        if (fullReply.length() > 0) {
+                            ChatHistory assistantMsg = new ChatHistory();
+                            assistantMsg.setSessionId(finalSessionId);
+                            assistantMsg.setRole("assistant");
+                            assistantMsg.setContent(fullReply.toString());
+                            chatHistoryMapper.insert(assistantMsg);
+                        }
+                        emitter.send(SseEmitter.event()
+                                .name("done")
+                                .data("{\"sessionId\":\"" + finalSessionId + "\"}"));
+                        emitter.complete();
+                    } catch (Exception e) {
+                        log.error("Failed to complete SSE stream", e);
+                        try { emitter.complete(); } catch (Exception ignored) {}
                     }
-                }
-
-                if (fullReply.length() > 0) {
-                    ChatHistory assistantMsg = new ChatHistory();
-                    assistantMsg.setSessionId(finalSessionId);
-                    assistantMsg.setRole("assistant");
-                    assistantMsg.setContent(fullReply.toString());
-                    chatHistoryMapper.insert(assistantMsg);
-                }
-
-                emitter.send(SseEmitter.event()
-                        .name("done")
-                        .data(Map.of("type", "done", "sessionId", finalSessionId)));
-                emitter.complete();
-
-            } catch (Exception e) {
-                log.error("Stream chat failed", e);
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("error")
-                            .data(Map.of("type", "error", "message", "抱歉，我暂时无法回答，请稍后再试。")));
-                    emitter.complete();
-                } catch (Exception ignored) {}
-            }
-        });
+                })
+                .doOnError(e -> {
+                    log.error("Stream chat failed", e);
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("error")
+                                .data(Map.of("type", "error", "message", "抱歉，我暂时无法回答，请稍后再试。")));
+                        emitter.complete();
+                    } catch (Exception ignored) {}
+                })
+                .subscribe();
 
         return emitter;
-    }
-
-    // ==================== 核心方法 ====================
-
-    /** Query the most recent N messages in chronological order (BEFORE current message is saved). */
-    private List<ChatHistory> getRecentHistory(String sessionId) {
-        List<ChatHistory> history = chatHistoryMapper.selectList(
-                new LambdaQueryWrapper<ChatHistory>()
-                        .eq(ChatHistory::getSessionId, sessionId)
-                        .orderByDesc(ChatHistory::getCreatedAt)
-                        .last("LIMIT " + HISTORY_LIMIT));
-        java.util.Collections.reverse(history);
-        log.debug("Loaded {} history messages for session {}", history.size(), sessionId);
-        return history;
-    }
-
-    /** Build message list: system + history + current user message. */
-    private List<Map<String, String>> buildMessages(
-            String systemPrompt, List<ChatHistory> history, String userMessage) {
-        List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPrompt));
-        for (ChatHistory h : history) {
-            messages.add(Map.of("role", h.getRole(), "content", h.getContent()));
-        }
-        messages.add(Map.of("role", "user", "content", userMessage));
-        log.debug("Built {} messages (system + {} history + user)", messages.size(), history.size());
-        return messages;
-    }
-
-    /** Call DashScope (non-streaming). */
-    private String callOpenAI(List<Map<String, String>> messages) {
-        try {
-            Map<String, Object> body = Map.of(
-                    "model", aiConfig.getModel(),
-                    "messages", messages,
-                    "temperature", 0.7,
-                    "max_tokens", 1024
-            );
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(BAILIAN_URL))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + aiConfig.getApiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            JsonNode root = objectMapper.readTree(response.body());
-            return root.path("choices").get(0).path("message").path("content").asText();
-
-        } catch (Exception e) {
-            log.error("Bailian API call failed", e);
-            return "抱歉，我暂时无法回答，请稍后再试。";
-        }
     }
 
     // ==================== RAG 检索 ====================
@@ -259,8 +194,16 @@ public class AIChatServiceImpl implements AIChatService {
         List<KnowledgeBase> all = knowledgeBaseMapper.selectList(null);
         if (all.isEmpty()) return null;
 
-        float[] queryVec = embeddingService.generateEmbedding(query);
-        if (queryVec == null) {
+        // Generate query embedding via Spring AI EmbeddingModel
+        float[] queryVec;
+        try {
+            List<Double> vecDouble = embeddingModel.embed(query);
+            queryVec = new float[vecDouble.size()];
+            for (int i = 0; i < vecDouble.size(); i++) {
+                queryVec[i] = vecDouble.get(i).floatValue();
+            }
+        } catch (Exception e) {
+            log.warn("Embedding failed, falling back to keyword search", e);
             return fallbackKeywordSearch(query, all);
         }
 
@@ -323,6 +266,20 @@ public class AIChatServiceImpl implements AIChatService {
         }
         if (normA == 0 || normB == 0) return 0;
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    // ==================== 助手方法 ====================
+
+    /** Query the most recent N messages in chronological order (BEFORE current message is saved). */
+    private List<ChatHistory> getRecentHistory(String sessionId) {
+        List<ChatHistory> history = chatHistoryMapper.selectList(
+                new LambdaQueryWrapper<ChatHistory>()
+                        .eq(ChatHistory::getSessionId, sessionId)
+                        .orderByDesc(ChatHistory::getCreatedAt)
+                        .last("LIMIT " + HISTORY_LIMIT));
+        java.util.Collections.reverse(history);
+        log.debug("Loaded {} history messages for session {}", history.size(), sessionId);
+        return history;
     }
 
     /** Build compact catalog of all published projects and skills. */

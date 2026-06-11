@@ -2,6 +2,17 @@ server:
   port: 8080
 
 spring:
+  ai:
+    dashscope:
+      api-key: ${BAILIAN_API_KEY}
+      chat:
+        options:
+          model: qwen-plus
+          temperature: 0.3
+          max-tokens: 4096
+      embedding:
+        options:
+          model: text-embedding-v3
   datasource:
     url: jdbc:mysql://mysql:3306/xinki_portfolio?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
     username: root
@@ -29,10 +40,7 @@ mybatis-plus:
     db-config:
       id-type: auto
 
-bailian:
-  api-key: ${BAILIAN_API_KEY}
-  model: qwen-plus
-  embedding-model: text-embedding-v3
+
 
 jwt:
   secret: ${JWT_SECRET:xinki-portfolio-jwt-secret-key-2026}
