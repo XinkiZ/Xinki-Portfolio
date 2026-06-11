@@ -26,8 +26,6 @@ public class VectorCacheService {
 
     private final StringRedisTemplate redisTemplate;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
-    private final EmbeddingService embeddingService;
-
     private static final String EMB_PREFIX = "knowledge:emb:";
     private static final String HASH_PREFIX = "knowledge:hash:";
     private static final Duration TTL = Duration.ofDays(7);
@@ -53,7 +51,7 @@ public class VectorCacheService {
 
     /** Store embedding for a knowledge entry. */
     public void put(Long id, float[] vec) {
-        String json = embeddingService.serialize(vec);
+        String json = serializeVec(vec);
         if (redisAvailable) {
             try {
                 redisTemplate.opsForValue().set(EMB_PREFIX + id, json, TTL);
@@ -71,7 +69,7 @@ public class VectorCacheService {
         if (redisAvailable) {
             try {
                 String json = redisTemplate.opsForValue().get(EMB_PREFIX + id);
-                if (json != null) return embeddingService.deserialize(json);
+                if (json != null) return deserializeVec(json);
             } catch (Exception e) {
                 redisAvailable = false;
                 log.warn("Redis read failed, switching to local cache");
@@ -83,7 +81,7 @@ public class VectorCacheService {
         // Lazy load from DB
         KnowledgeBase kb = knowledgeBaseMapper.selectById(id);
         if (kb != null && kb.getEmbedding() != null) {
-            vec = embeddingService.deserialize(kb.getEmbedding());
+            vec = deserializeVec(kb.getEmbedding());
             if (vec != null) {
                 localCache.put(id, vec);
                 return vec;
@@ -103,7 +101,7 @@ public class VectorCacheService {
                     for (int i = 0; i < ids.size(); i++) {
                         String json = values.get(i);
                         if (json != null) {
-                            float[] vec = embeddingService.deserialize(json);
+                            float[] vec = deserializeVec(json);
                             if (vec != null) result.put(ids.get(i), vec);
                         }
                     }
@@ -176,7 +174,7 @@ public class VectorCacheService {
         try {
             List<KnowledgeBase> all = knowledgeBaseMapper.selectList(null);
             for (KnowledgeBase kb : all) {
-                float[] vec = embeddingService.deserialize(kb.getEmbedding());
+                float[] vec = deserializeVec(kb.getEmbedding());
                 if (vec != null) localCache.put(kb.getId(), vec);
             }
             log.info("Loaded {} embeddings into local cache", localCache.size());

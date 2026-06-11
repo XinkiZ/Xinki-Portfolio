@@ -7,7 +7,6 @@ import com.xinki.portfolio.dto.LoginDTO;
 import com.xinki.portfolio.entity.*;
 import com.xinki.portfolio.mapper.*;
 import com.xinki.portfolio.service.DocumentChunkService;
-import com.xinki.portfolio.service.EmbeddingService;
 import com.xinki.portfolio.service.ContentIndexService;
 import com.xinki.portfolio.service.VectorCacheService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ public class AdminController {
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final ContactMessageMapper contactMessageMapper;
     private final DocumentChunkService documentChunkService;
-    private final EmbeddingService embeddingService;
     private final ContentIndexService contentIndexService;
     private final VectorCacheService vectorCacheService;
     private final StringRedisTemplate redisTemplate;
@@ -312,15 +310,14 @@ public class AdminController {
 
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
-            float[] vec = embeddingService.generateEmbedding(chunkText);
-            if (vec == null) {
+            float[] vec = if (vec == null) {
                 errors.add(Map.of("chunkIndex", i, "reason", "Embedding 生成失败，已跳过"));
                 continue;
             }
 
             KnowledgeBase kb = new KnowledgeBase();
             kb.setContent(chunkText);
-            kb.setEmbedding(embeddingService.serialize(vec));
+            kb.setEmbedding(serializeVec(vec));
             kb.setSourceFile(filename);
             kb.setSourceHash(sha256);
             kb.setChunkIndex(i);
