@@ -279,6 +279,31 @@ public class AdminController {
         return Result.success("已删除 " + deleted + " 条片段");
     }
 
+
+    private String serializeVec(float[] vec) {
+        if (vec == null) return null;
+        StringBuilder sb = new StringBuilder(\"[");
+        for (int i = 0; i < vec.length; i++) {
+            if (i > 0) sb.append(\",\");
+            sb.append(vec[i]);
+        }
+        sb.append(\"]\");
+        return sb.toString();
+    }
+
+    private float[] deserializeVec(String json) {
+        if (json == null || json.isEmpty()) return null;
+        try {
+            com.fasterxml.jackson.databind.JsonNode arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            float[] result = new float[arr.size()];
+            for (int i = 0; i < arr.size(); i++) {
+                result[i] = (float) arr.get(i).asDouble();
+            }
+            return result;
+        } catch (Exception e) {
+            return null;
+        }
+    }
     /** Import document: parse → chunk → embed → store. */
     @PostMapping("/knowledge/import")
     public Result<?> importKnowledge(@RequestParam("file") MultipartFile file) {
