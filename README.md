@@ -2,7 +2,7 @@
 
 > 水墨画风的个人综合主页 — 作品展示、AI 智能助手、管理后台，开箱即用。
 
-![Tech Stack](https://img.shields.io/badge/Spring_Boot-2.7.18-green?logo=springboot) ![Tech Stack](https://img.shields.io/badge/Vue-3.x-4fc08d?logo=vuedotjs) ![Tech Stack](https://img.shields.io/badge/MySQL-8.0-blue?logo=mysql) ![Tech Stack](https://img.shields.io/badge/Redis-7-red?logo=redis)
+![Tech Stack](https://img.shields.io/badge/Spring_Boot-3.4.4-green?logo=springboot) ![Tech Stack](https://img.shields.io/badge/Vue-3.x-4fc08d?logo=vuedotjs) ![Tech Stack](https://img.shields.io/badge/MySQL-8.0-blue?logo=mysql) ![Tech Stack](https://img.shields.io/badge/Redis-7-red?logo=redis)
 
 ---
 
@@ -32,9 +32,9 @@ graph LR
 
 | 层级 | 技术 |
 |------|------|
-| 后端 | Spring Boot 2.7 + MyBatis-Plus 3.5 |
+| 后端 | Spring Boot 3.4.4 + MyBatis-Plus 3.5.5 |
 | 前端 | Vue 3 + Vite + TypeScript + Pinia |
-| AI | 阿里百炼 DashScope（对话 + text-embedding-v3） |
+| AI | 阿里百炼 DashScope（Chat 兼容模式 + DashScopeEmbeddingService 原生 Embedding API） |
 | 存储 | MySQL 8.0 + Redis + 阿里云 OSS |
 | 部署 | Docker Compose（Nginx + 后端 + MySQL + Redis） |
 
@@ -142,7 +142,7 @@ cd portfolio-frontend && npm install && npm run dev
 ## 🧠 RAG 知识库
 
 ```
-用户提问 → 向量化 (text-embedding-v3) → Redis 语义检索 Top-K
+用户提问 → DashScopeEmbeddingService 向量化 (text-embedding-v3) → Redis 语义检索 Top-K
 → 拼接相关文本注入 system prompt → 大模型回复
 ```
 
@@ -160,7 +160,7 @@ Xinki-Portfolio/
 ├── portfolio-backend/           # Spring Boot 后端
 │   └── src/main/
 │       ├── java/.../controller/ # REST 控制器
-│       ├── java/.../service/    # 业务逻辑（AI / RAG / OSS）
+│       ├── java/.../service/    # 业务逻辑（AI Chat / RAG / DashScopeEmbeddingService / OSS）
 │       └── resources/db/        # 建表脚本
 ├── portfolio-frontend/          # Vue 3 前端
 │   └── src/
