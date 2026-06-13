@@ -10,7 +10,7 @@ import com.xinki.portfolio.service.DocumentChunkService;
 import com.xinki.portfolio.service.ContentIndexService;
 import com.xinki.portfolio.service.VectorCacheService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.embedding.EmbeddingModel;
+import com.xinki.portfolio.service.DashScopeEmbeddingService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +37,7 @@ public class AdminController {
     private final DocumentChunkService documentChunkService;
     private final ContentIndexService contentIndexService;
     private final VectorCacheService vectorCacheService;
-    private final EmbeddingModel embeddingModel;
+    private final DashScopeEmbeddingService embeddingService;
     private final StringRedisTemplate redisTemplate;
     private final com.xinki.portfolio.util.JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -284,7 +284,7 @@ public class AdminController {
 
 
     private float[] embed(String text) {
-        return embeddingModel.embed(text);
+        return embeddingService.embedDocument(text);
     }
     private String serializeVec(float[] vec) {
         if (vec == null) return null;

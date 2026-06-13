@@ -7,12 +7,18 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.core.Ordered;
 import org.springframework.core.PriorityOrdered;
+import org.springframework.stereotype.Component;
 
 /**
- * Fixes MyBatis-Plus 3.5.5 compatibility with Spring Framework 6.1+.
- * MyBatis-Plus 3.5.5 stores factoryBeanObjectType as String, but Spring 6.1 expects Class.
- * This processor converts String -> Class before any other BFPP reads the attribute.
+ * Fixes MyBatis-Plus 3.5.5 compatibility with Spring Framework 6.2+.
+ * MyBatis-Plus stores factoryBeanObjectType as String, but Spring 6.2 expects Class.
+ * 
+ * Must be a regular BeanFactoryPostProcessor (NOT BeanDefinitionRegistryPostProcessor)
+ * because MyBatis MapperScannerConfigurer is a non-ordered BDRPP that runs in the
+ * reiterate loop AFTER all Ordered BDRPPs. This processor runs as a BFPP after ALL
+ * BDRPP phases complete, ensuring mapper beans are already registered.
  */
+@Component
 public class MyBatisPlusCompatibilityProcessor implements BeanFactoryPostProcessor, PriorityOrdered {
 
     @Override

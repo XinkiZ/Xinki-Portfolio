@@ -5,7 +5,7 @@ import com.xinki.portfolio.entity.*;
 import com.xinki.portfolio.mapper.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.embedding.EmbeddingModel;
+import com.xinki.portfolio.service.DashScopeEmbeddingService;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -23,7 +23,7 @@ public class ContentIndexService {
     private final SkillMapper skillMapper;
     private final TimelineEventMapper timelineEventMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
-    private final EmbeddingModel embeddingModel;
+    private final DashScopeEmbeddingService embeddingService;
     private final VectorCacheService vectorCacheService;
 
     // ==================== Project ====================
@@ -69,7 +69,7 @@ public class ContentIndexService {
 
 
     private float[] embed(String text) {
-        return embeddingModel.embed(text);
+        return embeddingService.embedDocument(text);
     }
 
     private String serializeVec(float[] vec) {

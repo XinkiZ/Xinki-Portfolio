@@ -18,7 +18,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.embedding.EmbeddingModel;
+import com.xinki.portfolio.service.DashScopeEmbeddingService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class AIChatServiceImpl implements AIChatService {
 
     private final ChatClient.Builder chatClientBuilder;
-    private final EmbeddingModel embeddingModel;
+    private final DashScopeEmbeddingService embeddingService;
     private final RagConfig ragConfig;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final ChatHistoryMapper chatHistoryMapper;
@@ -167,7 +167,7 @@ public class AIChatServiceImpl implements AIChatService {
                         }
                         emitter.send(SseEmitter.event()
                                 .name("done")
-                                .data("{\"sessionId\":\"" + finalSessionId + "\"}"));
+                                .data(Map.of("type", "done", "sessionId", finalSessionId)));
                         emitter.complete();
                     } catch (Exception e) {
                         log.error("Failed to complete SSE stream", e);
@@ -197,7 +197,7 @@ public class AIChatServiceImpl implements AIChatService {
         // Generate query embedding via Spring AI EmbeddingModel
         float[] queryVec;
         try {
-            queryVec = embeddingModel.embed(query);
+            queryVec = embeddingService.embed(query);
         } catch (Exception e) {
             log.warn("Embedding failed, falling back to keyword search", e);
             return fallbackKeywordSearch(query, all);
