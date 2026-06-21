@@ -1,4 +1,4 @@
-﻿# Xinki Portfolio — 个人综合主页设计文档
+# Xinki Portfolio — 个人综合主页设计文档
 
 > 创建日期：2026-06-09  
 > 版本：v1.0  

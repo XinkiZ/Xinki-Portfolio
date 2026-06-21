@@ -10,6 +10,7 @@ public class TimelineEvent {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String title;
+    private String summary;
     private String description;
     private String type;
     private LocalDate startDate;

@@ -5,6 +5,7 @@ import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ClientException;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.PutObjectRequest;
+import com.xinki.portfolio.common.BusinessException;
 import com.xinki.portfolio.service.OssService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,13 +52,13 @@ public class OssServiceImpl implements OssService {
         } catch (OSSException e) {
             log.error("OSS error: code={}, message={}, requestId={}",
                     e.getErrorCode(), e.getErrorMessage(), e.getRequestId());
-            throw new RuntimeException("OSS upload failed: " + e.getErrorMessage(), e);
+            throw new BusinessException("OSS 上传失败：" + e.getErrorMessage());
         } catch (ClientException e) {
             log.error("OSS client error: {}", e.getMessage());
-            throw new RuntimeException("OSS client error", e);
+            throw new BusinessException("OSS 客户端异常");
         } catch (IOException e) {
             log.error("File read error: {}", e.getMessage());
-            throw new RuntimeException("File read failed", e);
+            throw new BusinessException("文件读取失败");
         }
 
         return "https://" + bucketName + "." + endpoint + "/" + objectName;

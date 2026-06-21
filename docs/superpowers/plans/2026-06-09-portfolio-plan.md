@@ -1,4 +1,4 @@
-﻿# Xinki Portfolio — 实现计划
+# Xinki Portfolio — 实现计划
 
 > **For agentic workers:** Use superpowers:subagent-driven-development or executing-plans. Steps use checkbox syntax.
 

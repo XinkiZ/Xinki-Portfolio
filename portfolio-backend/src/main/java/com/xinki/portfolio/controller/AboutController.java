@@ -30,7 +30,7 @@ public class AboutController {
     public Result<Map<String, Object>> about() {
         Map<String, Object> result = new HashMap<>();
 
-        User user = userMapper.selectOne(new LambdaQueryWrapper<User>().last("LIMIT 1"));
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>());
         if (user != null) user.setPassword(null);
         result.put("user", user);
 

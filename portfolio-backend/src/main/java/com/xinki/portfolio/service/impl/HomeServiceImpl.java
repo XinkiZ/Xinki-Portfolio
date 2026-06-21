@@ -1,6 +1,7 @@
 package com.xinki.portfolio.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xinki.portfolio.entity.Project;
 import com.xinki.portfolio.entity.Skill;
 import com.xinki.portfolio.entity.TimelineEvent;
@@ -35,22 +36,19 @@ public class HomeServiceImpl implements HomeService {
         }
         result.put("user", user);
 
-        List<Project> projects = projectMapper.selectList(
+        Page<Project> page = projectMapper.selectPage(
+                new Page<>(1, 6),
                 new LambdaQueryWrapper<Project>()
                         .eq(Project::getIsPublished, 1)
-                        .orderByDesc(Project::getCreatedAt)
-                        .last("LIMIT 6")
-        );
-        result.put("recentProjects", projects);
+                        .orderByDesc(Project::getCreatedAt));
+        result.put("recentProjects", page.getRecords());
 
         List<Skill> skills = skillMapper.selectList(
-                new LambdaQueryWrapper<Skill>().orderByAsc(Skill::getSortOrder)
-        );
+                new LambdaQueryWrapper<Skill>().orderByAsc(Skill::getSortOrder));
         result.put("skills", skills);
 
         List<TimelineEvent> timeline = timelineEventMapper.selectList(
-                new LambdaQueryWrapper<TimelineEvent>().orderByDesc(TimelineEvent::getStartDate)
-        );
+                new LambdaQueryWrapper<TimelineEvent>().orderByDesc(TimelineEvent::getStartDate));
         result.put("timeline", timeline);
 
         return result;
